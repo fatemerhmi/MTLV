@@ -6,7 +6,7 @@ As this repo includes a sub module, the clone part is a bit different:
 
 Learn more about sub modules [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules). 
 
-To clone the repo simply use:
+To clone the repo simply use:     
 `git clone --recurse-submodules https://github.com/maktaf/radiologyreportBESTproject.git`
 
 If you have already clone it without `--recurse-submodules`, this is how to add the submodules:
