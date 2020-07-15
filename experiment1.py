@@ -11,6 +11,8 @@ from transformers import AdamW
 from torch.nn import BCEWithLogitsLoss, BCELoss
 from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, f1_score, accuracy_score
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+from copy import deepcopy
+from prettytable import PrettyTable
 
 def stratify(data, classes, ratios, one_hot=False):
     """Stratifying procedure.
@@ -176,11 +178,18 @@ def prepare_dataset(data_path):
     #preprocess the data
     df_cls = preprocess_dataset(df)
     
+    #shuffle 
+    df_cls = df_cls.sample(frac=1).reset_index(drop=True)
+
     #splitting the data
     stratified_data_ids, stratified_data =  stratify(data=df_cls['labels'].values, classes=[0,1], ratios=[0.6,0.2,0.2], one_hot=False)
     train_df = df_cls.iloc[stratified_data_ids[0],:]
     test_df = df_cls.iloc[stratified_data_ids[1],:]
     val_df = df_cls.iloc[stratified_data_ids[2],:]
+
+    train_df.reset_index(drop=True, inplace=True)
+    test_df.reset_index(drop=True, inplace=True)
+    val_df.reset_index(drop=True, inplace=True)
 
     print('Train: ', len(train_df))
     print('Test: ', len(test_df))
@@ -191,13 +200,12 @@ def prepare_dataset(data_path):
     label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
     label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
 
-    from prettytable import PrettyTable
+    
     pretty=PrettyTable()
     pretty.field_names = ['Pathology', 'total', 'train', 'test','val']
     for pathology, cnt_total, cnt_train, cnt_test, cnt_val in zip(label_cols,label_counts_total, label_counts_train, label_counts_test, label_counts_val):
         pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
     print(pretty)
-    
     
     return train_df, test_df, val_df, num_labels, label_cols
     
@@ -380,6 +388,7 @@ def multilabel_cls(data_path, PreTrainedModel, epochs, batch_size, max_length ,M
     pred_bools = [pl>0.50 for pl in pred_labels] #boolean output after thresholding
 
     # Print and save classification report
+    print("Threshold: 0.5")
     print('Test F1 Score: ', f1_score(true_bools, pred_bools,average='micro'))
     print('Test Accuracy: ', accuracy_score(true_bools, pred_bools),'\n')
     clf_report = classification_report(true_bools,pred_bools,target_names=test_label_cols)
@@ -415,8 +424,8 @@ def multilabel_cls(data_path, PreTrainedModel, epochs, batch_size, max_length ,M
 
     # Printing and saving classification report
     print('Best Threshold: ', micro_thresholds[best_f1_idx])
-    print('Test F1 Accuracy: ', f1_results[best_f1_idx])
-    print('Test Flat Accuracy: ', flat_acc_results[best_f1_idx], '\n')
+    print('Test F1 Score: ', f1_results[best_f1_idx])
+    print('Test Accuracy: ', flat_acc_results[best_f1_idx], '\n')
 
     best_pred_bools = [pl>micro_thresholds[best_f1_idx] for pl in pred_labels]
     clf_report_optimized = classification_report(true_bools,best_pred_bools, target_names=label_cols)
@@ -433,7 +442,6 @@ def main():
     batch_size = 16
     max_length = 128
     multilabel_cls(data_path, PreTrainedModel, epochs, batch_size, max_length ,ModelTokenizer, model_name, use_data_loader)
-
 
 
 if __name__ == '__main__':
