@@ -3,15 +3,14 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import seaborn as sn
 import matplotlib.pyplot as plt
-from sklearn.metrics import multilabel_confusion_matrix
-from transformers import BertTokenizer, BertForSequenceClassification
 import torch
 from tqdm import tqdm, trange
 from transformers import AdamW
 from torch.nn import BCEWithLogitsLoss, BCELoss
-from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, f1_score, accuracy_score
+from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, f1_score, accuracy_score, label_ranking_average_precision_score
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 import ast
+
 
 def read_data(data_path,split_path):
     df = pd.read_csv(data_path)
@@ -72,7 +71,7 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
         pass
 
     # Load model, the pretrained model will include a single linear classification layer on top for classification. 
-    model = PreTrainedModel.from_pretrained("bert-base-uncased", num_labels=num_labels)
+    model = PreTrainedModel.from_pretrained(model_name, num_labels=num_labels)
     model.cuda()
     optimizer = AdamW(model.parameters(),lr=2e-5)  # Default optimization
     
@@ -212,9 +211,11 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
     pred_bools = [pl>0.50 for pl in pred_labels] #boolean output after thresholding
 
     # Print and save classification report
+    print("-----------test-----------")
     print("Threshold: 0.5")
     print('Test F1 Score: ', f1_score(true_bools, pred_bools,average='micro'))
-    print('Test Accuracy: ', accuracy_score(true_bools, pred_bools),'\n')
+    print('Test Accuracy: ', accuracy_score(true_bools, pred_bools))
+    print('LRAP: ', label_ranking_average_precision_score(true_labels, pred_labels) ,'\n')
     clf_report = classification_report(true_bools,pred_bools,target_names=test_label_cols)
     # pickle.dump(clf_report, open('classification_report.txt','wb')) #save report
     print(clf_report)
@@ -249,7 +250,8 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
     # Printing and saving classification report
     print('Best Threshold: ', micro_thresholds[best_f1_idx])
     print('Test F1 Score: ', f1_results[best_f1_idx])
-    print('Test Accuracy: ', flat_acc_results[best_f1_idx], '\n')
+    print('Test Accuracy: ', flat_acc_results[best_f1_idx])
+    print('LRAP: ', label_ranking_average_precision_score(true_labels, pred_labels) , '\n')
 
     best_pred_bools = [pl>micro_thresholds[best_f1_idx] for pl in pred_labels]
     clf_report_optimized = classification_report(true_bools,best_pred_bools, target_names=label_cols)
@@ -259,13 +261,35 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
 def main():    
     data_path = 'data/OpenI/OpenI_cheXpertLabels.csv'
     split_path = 'data/OpenI/cheXpertLabels'
-    model_name = 'bert-base-uncased'
-    ModelTokenizer = BertTokenizer
     use_data_loader = True
-    PreTrainedModel = BertForSequenceClassification
+    
     epochs = 3 # Number of training epochs (authors recommend between 2 and 4)
     batch_size = 16
     max_length = 128
+    #----------------bert---------------
+    # from transformers import BertTokenizer, BertForSequenceClassification
+    # model_name = 'bert-base-uncased'
+    # model_name = "bert-base-cased"
+    # ModelTokenizer = BertTokenizer
+    # PreTrainedModel = BertForSequenceClassification
+    #----------------BioBERT-----------
+    # from transformers import AutoTokenizer, AutoModel
+    # # model_name = "monologg/biobert_v1.0_pubmed_pmc"
+    # model_name = "monologg/biobert_v1.1_pubmed"
+    # ModelTokenizer = AutoTokenizer
+    # PreTrainedModel = BertForSequenceClassification
+			
+    #------------roberta-------------
+    from transformers import RobertaTokenizer, RobertaForSequenceClassification
+    model_name = 'roberta-base'
+    ModelTokenizer = RobertaTokenizer
+    PreTrainedModel = RobertaForSequenceClassification
+			
+    #------------albert-------------
+    # from transformers import AlbertTokenizer, AlbertModel
+    # tokenizer = AlbertTokenizer.from_pretrained('albert-base-v1')
+    # model = AlbertForSequenceClassification.from_pretrained('albert-base-v1')
+
     multilabel_cls(data_path,split_path, PreTrainedModel, epochs, batch_size, max_length ,ModelTokenizer, model_name, use_data_loader)
 
 if __name__ == '__main__':
