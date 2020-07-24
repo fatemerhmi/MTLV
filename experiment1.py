@@ -31,13 +31,19 @@ def read_data(data_path,split_path):
 
     return train_df, test_df, val_df, label_cols
 
-    
-def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, max_length ,ModelTokenizer, model_name, use_data_loader):
+def create_dataLoader(input, labels, batch_size):
+    data = TensorDataset(input.input_ids, input.attention_mask, labels)
+    sampler = SequentialSampler(data)
+    dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
+    return dataloader
+
+
+def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, max_length ,ModelTokenizer, tokenizer_name, model_name, use_data_loader):
     #prepare the dataset
     train_df, test_df, val_df,  label_cols = read_data(data_path, split_path)
     num_labels = len(label_cols)
     # ----------tokenize---------------
-    tokenizer = ModelTokenizer.from_pretrained(model_name)
+    tokenizer = ModelTokenizer.from_pretrained(tokenizer_name)
 
     reports_train = train_df.text.to_list()
     reports_test = test_df.text.to_list()
@@ -55,18 +61,11 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
     if use_data_loader: # if the dataset is huge in size
         # Create an iterator of our data with torch DataLoader. This helps save on memory during training because, 
         # unlike a for loop, with an iterator the entire dataset does not need to be loaded into memory
-        train_data = TensorDataset(train.input_ids, train.attention_mask, train_labels, train.token_type_ids)
-        train_sampler = RandomSampler(train_data)
-        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
 
-        validation_data = TensorDataset(val.input_ids, val.attention_mask, val_labels, val.token_type_ids)
-        validation_sampler = SequentialSampler(validation_data)
-        validation_dataloader = DataLoader(validation_data, sampler=validation_sampler, batch_size=batch_size)
+        train_dataloader = create_dataLoader(train, train_labels, batch_size)
+        validation_dataloader   = create_dataLoader(val, val_labels, batch_size)
+        test_dataloader  = create_dataLoader(test, test_labels, batch_size)
 
-        test_data = TensorDataset(test.input_ids, test.attention_mask, test_labels, test.token_type_ids)
-        test_sampler = SequentialSampler(test_data)
-        test_dataloader = DataLoader(test_data, sampler=validation_sampler, batch_size=batch_size)
-    
     else: #TODO: if the dataset is small in size
         pass
 
@@ -77,7 +76,11 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
     
     #---------FineTune model-----------
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    n_gpu = torch.cuda.device_count()
+    # device = torch.device()
+    # print(device)
+    # device = torch.cuda.device(1)
+    # print(device)
+    # n_gpu = torch.cuda.device_count()
     print(torch.cuda.get_device_name(0))
     
     # Store our loss and accuracy for plotting
@@ -100,7 +103,7 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
             # Add batch to GPU
             batch = tuple(t.to(device) for t in batch)
             # Unpack the inputs from our dataloader
-            b_input_ids, b_input_mask, b_labels, b_token_types = batch
+            b_input_ids, b_input_mask, b_labels = batch
             # Clear out the gradients (by default they accumulate)
             optimizer.zero_grad()
 
@@ -142,7 +145,7 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
         for i, batch in enumerate(validation_dataloader):
             batch = tuple(t.to(device) for t in batch)
             # Unpack the inputs from our dataloader
-            b_input_ids, b_input_mask, b_labels, b_token_types = batch
+            b_input_ids, b_input_mask, b_labels = batch
             with torch.no_grad():
                 # Forward pass
                 outs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
@@ -183,7 +186,7 @@ def multilabel_cls(data_path, split_path, PreTrainedModel, epochs, batch_size, m
     for i, batch in enumerate(test_dataloader):
         batch = tuple(t.to(device) for t in batch)
         # Unpack the inputs from our dataloader
-        b_input_ids, b_input_mask, b_labels, b_token_types = batch
+        b_input_ids, b_input_mask, b_labels = batch
         with torch.no_grad():
             # Forward pass
             outs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
@@ -269,28 +272,41 @@ def main():
     #----------------bert---------------
     # from transformers import BertTokenizer, BertForSequenceClassification
     # model_name = 'bert-base-uncased'
-    # model_name = "bert-base-cased"
+    # tokenizer_name = "bert-base-uncased"
+    
+    # # model_name = "bert-base-cased"
+    # # tokenizer_name = "bert-base-cased"
     # ModelTokenizer = BertTokenizer
     # PreTrainedModel = BertForSequenceClassification
-    #----------------BioBERT-----------
-    # from transformers import AutoTokenizer, AutoModel
-    # # model_name = "monologg/biobert_v1.0_pubmed_pmc"
-    # model_name = "monologg/biobert_v1.1_pubmed"
-    # ModelTokenizer = AutoTokenizer
+
+    #----------------BioBERT-v1.0----------
+    # model_name = "monologg/biobert_v1.0_pubmed_pmc" # from hugginface model list
+    # model_name = "model_wieghts/biobert_v1.0_pubmed_pmc"
+    # tokenizer_name = "bert-base-cased"
+    # ModelTokenizer = BertTokenizer
+    # PreTrainedModel = BertForSequenceClassification
+
+    #----------------BioBERT-v1.1----------
+    # model_name = "model_wieghts/biobert_v1.1_pubmed"
+    # tokenizer_name = "bert-base-cased"
+    # ModelTokenizer = BertTokenizer
     # PreTrainedModel = BertForSequenceClassification
 			
     #------------roberta-------------
-    from transformers import RobertaTokenizer, RobertaForSequenceClassification
-    model_name = 'roberta-base'
-    ModelTokenizer = RobertaTokenizer
-    PreTrainedModel = RobertaForSequenceClassification
+    # from transformers import RobertaTokenizer, RobertaForSequenceClassification
+    # model_name = 'roberta-base'
+    # tokenizer_name = 'roberta-base'
+    # ModelTokenizer = RobertaTokenizer
+    # PreTrainedModel = RobertaForSequenceClassification
 			
     #------------albert-------------
-    # from transformers import AlbertTokenizer, AlbertModel
-    # tokenizer = AlbertTokenizer.from_pretrained('albert-base-v1')
-    # model = AlbertForSequenceClassification.from_pretrained('albert-base-v1')
+    from transformers import AlbertTokenizer, AlbertForSequenceClassification
+    model_name = 'albert-base-v1'
+    tokenizer_name = 'albert-base-v1'
+    ModelTokenizer = AlbertTokenizer
+    PreTrainedModel = AlbertForSequenceClassification
 
-    multilabel_cls(data_path,split_path, PreTrainedModel, epochs, batch_size, max_length ,ModelTokenizer, model_name, use_data_loader)
+    multilabel_cls(data_path,split_path, PreTrainedModel, epochs, batch_size, max_length ,ModelTokenizer, tokenizer_name, model_name, use_data_loader)
 
 if __name__ == '__main__':
     main()
