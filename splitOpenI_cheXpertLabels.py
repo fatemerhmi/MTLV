@@ -1,7 +1,7 @@
 from copy import deepcopy
 import pandas as pd
 from prettytable import PrettyTable
-
+import numpy as np
 
 def stratify(data, classes, ratios, one_hot=False):
     """Stratifying procedure.
@@ -167,6 +167,9 @@ def split_dataset(data_path):
     #preprocess the data
     df_cls = preprocess_dataset(df)
     
+    #remove XXXX
+    df_cls['text'] = df_cls.apply(lambda row: row['text'].replace("XXXX", ""), axis=1)
+
     #shuffle 
     df_cls = df_cls.sample(frac=1).reset_index(drop=True)
 
@@ -184,26 +187,49 @@ def split_dataset(data_path):
     print('Test: ', len(test_df))
     print('Val: ', len(val_df))
 
+    total_reports = len(df_cls)
     label_counts_total = np.array(df_cls.labels.to_list()).sum(axis=0)
     label_counts_train = np.array(train_df.labels.to_list()).sum(axis=0)
     label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
     label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
+    
 
+    #---- print total -----
+    chexpert_labels = ['No Finding',"Enlarged Cardiom.",'Cardiomegaly','Lung Lesion','Lung Opacity', 
+                'Edema', 'Consolidation', 'Pneumonia', 
+                'Atelectasis', 'Pneumothorax', 'Pleural Effusion','Pleural Other', 'Fracture', 'SupportDevices']
+    labeldistro = PrettyTable()
+    labeldistro.field_names = ['Pathology', 'Positive(%)']
+    i=0
+    labeldistro_df = pd.DataFrame( columns = ['Pathology', 'Positive(%)'] )
+    for pathology in chexpert_labels:
+        if pathology in label_cols:
+            count = label_counts_total[i]
+            percent = round(count/total_reports*100, 2)
+            labeldistro.add_row([pathology, f"{count} ({percent})"])
+            labeldistro_df = labeldistro_df.append({'Pathology':pathology, 'Positive(%)': f"{count} ({percent})"}, ignore_index=True)
+            i+=1
+        else: 
+            labeldistro.add_row([pathology, "-"])
+            labeldistro_df = labeldistro_df.append({'Pathology':pathology, 'Positive(%)': "-"}, ignore_index=True)
+    save_dataset(labeldistro_df, "LabelDistribution")
+    print(labeldistro)
     
-    pretty=PrettyTable()
-    pretty.field_names = ['Pathology', 'total', 'train', 'test','val']
+    #----- print train, test, eval -----
+    ttv=PrettyTable()
+    ttv.field_names = ['Pathology', 'total', 'train', 'test','val']
     for pathology, cnt_total, cnt_train, cnt_test, cnt_val in zip(label_cols,label_counts_total, label_counts_train, label_counts_test, label_counts_val):
-        pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
-    print(pretty)
+        ttv.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
+    print(ttv)
     
-    return train_df, test_df, val_df, num_labels, label_cols
+    return train_df, test_df, val_df
 
 def save_dataset(df, file_name):
     df.to_csv(f'data/OpenI/cheXpertLabels/{file_name}.csv', index=False)
 
 def main():    
     data_path = 'data/OpenI/OpenI_cheXpertLabels.csv'
-    train_df, test_df, val_df=split(data_path)
+    train_df, test_df, val_df = split_dataset(data_path)
     save_dataset(train_df,"train")
     save_dataset(test_df,"test")
     save_dataset(val_df,"val")
