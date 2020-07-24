@@ -3,6 +3,7 @@ cache_dir/
 findings_frequency.tex
 outputs/
 runs/
+model_wieghts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
