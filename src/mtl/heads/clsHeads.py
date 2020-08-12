@@ -1,5 +1,9 @@
+import torch
+from torch import nn
+from torch.nn import BCEWithLogitsLoss, BCELoss, CrossEntropyLoss
 
 
+__all__ = ["HeadMultilabelCLS", "HeadMulticlassCLS"]
 
 class Head():
     def __init__(self,hparams):
