@@ -20,3 +20,7 @@ This will initialize your local configuration file
 
   Then: `git submodule update`      
   This will fetch all the data from `mimic-cxr` project and check out the appropriate commit listed in `radiologyreportBESTproject` project  
+
+# Run your experiments:
+python3 src/main.py --help       
+python3 src/main.py run --config src/mtl/config/openI_1layer.yml      
