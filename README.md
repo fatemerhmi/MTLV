@@ -27,11 +27,11 @@ python3 src/main.py run --config src/mtl/config/openI_1layer.yml
 
 
 # Datasts:
-1. [20newsgroup](http://qwone.com/~jason/20Newsgroups/)
-We used [bydate version](http://qwone.com/~jason/20Newsgroups/20news-bydate.tar.gz) for the experiments in the thesis. 
-The original version is also available in [sklearn](https://scikit-learn.org/0.19/datasets/twenty_newsgroups.html)
+1. [20newsgroup](http://qwone.com/~jason/20Newsgroups/)        
+We used [bydate version](http://qwone.com/~jason/20Newsgroups/20news-bydate.tar.gz) for the experiments in the thesis.       
+The original version is also available in [sklearn](https://scikit-learn.org/0.19/datasets/twenty_newsgroups.html)       
 
-2. [Ohsumed]()
-The [original version](http://disi.unitn.eu/moschitti/corpora/ohsumed-all-docs.tar.gz) with 23 categories 
-[Ohsmed O10](https://www.mat.unical.it/OlexSuite/Datasets/SampleDataSets-download.htm)
-[category description](http://disi.unitn.eu/moschitti/corpora/First-Level-Categories-of-Cardiovascular-Disease.txt)
+2. [Ohsumed]()            
+The [original version](http://disi.unitn.eu/moschitti/corpora/ohsumed-all-docs.tar.gz) with 23 categories       
+[Ohsmed O10](https://www.mat.unical.it/OlexSuite/Datasets/SampleDataSets-download.htm)       
+[category description](http://disi.unitn.eu/moschitti/corpora/First-Level-Categories-of-Cardiovascular-Disease.txt)       
