@@ -35,3 +35,16 @@ The original version is also available in [sklearn](https://scikit-learn.org/0.1
 The [original version](http://disi.unitn.eu/moschitti/corpora/ohsumed-all-docs.tar.gz) with 23 categories       
 [Ohsmed O10](https://www.mat.unical.it/OlexSuite/Datasets/SampleDataSets-download.htm)       
 [category description](http://disi.unitn.eu/moschitti/corpora/First-Level-Categories-of-Cardiovascular-Disease.txt)       
+
+3. MIMIC-CXR
+[Dataset Description](https://physionet.org/content/mimic-cxr/2.0.0/)
+[Steps to Access the data](https://mimic.physionet.org/gettingstarted/access/)
+
+4. Open-I         
+[Dataset Description](https://openi.nlm.nih.gov/faq#collection)           
+[Download](https://openi.nlm.nih.gov/imgs/collections/NLMCXR_reports.tgz)           
+
+5. Reuter           
+The [Original Version](http://kdd.ics.uci.edu/databases/reuters21578/reuters21578.html) with ... categories
+[Descirption of datast and 90 labels](https://martin-thoma.com/nlp-reuters/)          
+[Routers R-10](https://www.mat.unical.it/OlexSuite/Datasets/data/R10/modApte.rar)            
