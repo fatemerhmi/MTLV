@@ -1,0 +1,27 @@
+experiment_name:
+  OpenI_1layer
+
+dataset_name: 
+  openI:
+    root: ./data/
+    splitted: True
+
+model: 
+  bert: bert-base-uncased
+  use_data_loader: True
+
+training:
+  epoch : 3
+  batch_size : 16
+  use_cuda : True
+
+head: 
+  count: 1
+  heads: MultiLabelCLS
+  # MultiClassCLS
+
+tokenizer: 
+  bert-base-uncased:
+    padding: max_length    # to pad to the longest sequence in the batch
+    truncation: True  # truncate to a maximum length specified by the max_length
+    max_length : 128
