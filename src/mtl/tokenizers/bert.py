@@ -1,7 +1,6 @@
-import ai.fast.utils.register as register
 from transformers import BertTokenizer
 
-__all__ = ['bert-base-uncased', 'bert-large-uncased', 'bert-base-cased', 'bert-large-cased']
+__all__ = ['bert_base_uncased', 'bert_large_uncased', 'bert_base_cased', 'bert_large_cased']
 
 def bert_base_uncased():
     return BertTokenizer.from_pretrained('bert-base-uncased')
