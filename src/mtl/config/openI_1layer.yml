@@ -1,10 +1,12 @@
 experiment_name:
   OpenI_1layer
 
-dataset_name: 
+dataset: 
   openI:
-    root: ./data/
-    splitted: True
+    root: ./data
+    data_split: True # True: train, test | False: train, test, val
+    data_path: openI/OpenI_cheXpertLabels.csv
+    split_path: openI/cheXpertLabels
 
 model: 
   bert: bert-base-uncased
@@ -16,12 +18,16 @@ training:
   use_cuda : True
 
 head: 
-  count: 1
-  heads: MultiLabelCLS
-  # MultiClassCLS
+  multi-head: #single or multi-task
+    count: 3
+    heads: MultiLabelCLS
+    heads_index : [[0,1,2,6], [3,4,5,7,9], [8,10]]
+       # MultiClassCLS
 
-tokenizer: 
-  bert-base-uncased:
+tokenizer:
+  bert:
+    name: bert_base_uncased
     padding: max_length    # to pad to the longest sequence in the batch
     truncation: True  # truncate to a maximum length specified by the max_length
     max_length : 128
+
