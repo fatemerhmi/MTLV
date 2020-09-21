@@ -12,7 +12,7 @@ def setup_model():
     pass
 
 
-def setup_dataset(dataset_cfg, tokenizer_cfg):
+def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
 
     #-------dataset name and args:
     dataset_name = list(dataset_cfg.keys())[0]
@@ -24,6 +24,12 @@ def setup_dataset(dataset_cfg, tokenizer_cfg):
     tokenizer_args = list(tokenizer_cfg.values())[0]
     print(f"[  setup tokenizer ] tokenizer name: {tokenizer_name}, Tokenizer arge: {tokenizer_args}")
 
+    #-------head name and args
+    head_type = list(head_cfg.keys())[0]
+    head_args = list(head_cfg.values())[0]
+    print(f"[  setup head ] head type: {head_type}, head arge: {head_args}")
+
+
     #-------get all the available tokenizers:
     available_tokenizers = tokenizers.__all__
     if tokenizer_name in available_tokenizers:
@@ -34,7 +40,7 @@ def setup_dataset(dataset_cfg, tokenizer_cfg):
     #-------get the tokenizer obj
     if tokenizer_args['name'] in imported_tokenizer_module.__all__:
         tokenizer_obj = getattr(imported_tokenizer_module,tokenizer_args['name'])()
-        print(tokenizer_obj)
+        # print(tokenizer_obj)
     else:
         raise NameError(f'{tokenizer_args["name"]} does not appear in this lists of tokenizers we support: {imported_tokenizer_module.__all__}')
 
@@ -45,9 +51,9 @@ def setup_dataset(dataset_cfg, tokenizer_cfg):
     else:
         raise NameError(f'{dataset_name} does not appear in this lists of datasets we support: {available_datsets}')
 
-    train_dataset, valid_dataset, test_dataset = getattr(imported_dataset_module, "_setup_datasets")(dataset_name, tokenizer_obj, tokenizer_args)
+    train_dataloader, val_dataloader, test_dataloader = getattr(imported_dataset_module, "_setup_datasets")(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size)
 
-    return train_dataset, valid_dataset, test_dataset
+    return train_dataloader, val_dataloader, test_dataloader
 
 def load_config(config_file):
 
@@ -74,7 +80,8 @@ def verify_config(config):
         raise Exception(f"Missing key in training part. Required keys are: {required_keys}")
 
     # Head:
-    if cfg['head']['count']<1:
+    head_args = list(cfg['head'].values())[0]
+    if head_args['count']<1:
         raise Exception("Number of heads shouls at least be one.")
 
     return cfg
