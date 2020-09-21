@@ -4,8 +4,13 @@ import io
 import os
 from tqdm import tqdm
 import ast
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+import pandas as pd
+import numpy as np
+
 
 from mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_reader
+from mtl.heads.utils import padding_heads, group_heads
 
 """
     You can manually donwload the OpenIdataset and put it in the data directory in root. 
@@ -78,8 +83,7 @@ class TextClassification(torch.utils.data.Dataset):
     def targets(self):
         return self._labels
 
-
-def _setup_datasets(dataset_name, tokenizer, tokenizer_args, root='./data'):
+def _setup_datasets_old(dataset_name, tokenizer, tokenizer_args, root='./data'):
     # check not to download if it already exists
     # import ipdb
     # ipdb.set_trace()
@@ -131,3 +135,65 @@ def _setup_datasets(dataset_name, tokenizer, tokenizer_args, root='./data'):
 
         # return (TextClassification(train_data, train_labels, tokenizer, tokenizer_args),
         #         TextClassification(test_data, test_labels, tokenizer, tokenizer_args))
+
+#-------------this is the previous version I had in my jupyter notebook
+def create_dataLoader(input, labels, batch_size):
+    data = TensorDataset(input.input_ids, input.attention_mask, labels)
+    sampler = SequentialSampler(data)
+    dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
+    return dataloader
+
+
+def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size): # previously read_data
+    #-------read the data
+    data_path =  f"{dataset_args['root']}/{dataset_args['data_path']}"        
+    split_path = f"{dataset_args['root']}/{dataset_args['split_path']}"  
+
+    df = pd.read_csv(data_path)
+    cols = df.columns
+    label_cols = list(cols[6:])
+    num_labels = len(label_cols)
+
+    #-------convert string of list to actual list (labels)
+    train_df = pd.read_csv(f"{split_path}/train.csv")
+    train_df['labels'] = train_df.apply(lambda row: ast.literal_eval(row['labels']), axis=1)
+
+    test_df = pd.read_csv(f"{split_path}/test.csv")
+    test_df['labels'] = test_df.apply(lambda row: ast.literal_eval(row['labels']), axis=1)
+
+    val_df = pd.read_csv(f"{split_path}/val.csv")
+    val_df['labels'] = val_df.apply(lambda row: ast.literal_eval(row['labels']), axis=1)
+    
+    #-------check for multi-head
+    if head_type =="multi-head":
+        heads_index = head_args["heads_index"]
+        padded_heads = padding_heads(heads_index)
+        train_df = group_heads(padded_heads, train_df)
+        test_df = group_heads(padded_heads, test_df)
+        val_df = group_heads(padded_heads, val_df)
+    if head_type =="single":
+        print("TODO: [openI.py] Develope single head")
+        return
+    if head_type=="multi-task": 
+        print("TODO: [openI.py] Develope multi-task")
+        return
+    #-------tokenize
+    reports_train = train_df.text.to_list()
+    reports_test = test_df.text.to_list()
+    reports_val   = val_df.text.to_list()
+   
+    train = tokenizer(reports_train, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
+    test = tokenizer(reports_test, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
+    val = tokenizer(reports_val, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
+    
+    #-------prepare labels for dataloader
+    train_labels = torch.from_numpy(np.array(train_df.head_labels.to_list()))
+    test_labels = torch.from_numpy(np.array(test_df.head_labels.to_list()))
+    val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
+    
+    #-------create dataloarders
+    train_dataloader      = create_dataLoader(train, train_labels, batch_size)
+    validation_dataloader = create_dataLoader(val, val_labels, batch_size)
+    test_dataloader       = create_dataLoader(test, test_labels, batch_size)
+
+    return train_dataloader, validation_dataloader, test_dataloader
