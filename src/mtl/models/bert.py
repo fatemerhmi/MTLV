@@ -1,7 +1,7 @@
 from transformers import BertPreTrainedModel, BertModel
 from torch import nn
 
-__all__ = ['bert-base-uncased', 'bert-large-uncased', 'bert-base-cased', 'bert-large-cased']
+__all__ = ['bert_base_uncased', 'bert_large_uncased', 'bert_base_cased', 'bert_large_cased']
 
 class BertCLS(BertPreTrainedModel):
     def __init__(self, config):
