@@ -7,12 +7,14 @@ dataset:
     data_split: True # True: train, test | False: train, test, val
     data_path: openI/OpenI_cheXpertLabels.csv
     split_path: openI/cheXpertLabels
+    use_data_loader: True
 
 model: 
-  bert: bert-base-uncased
-  use_data_loader: True
-
+  bert:
+    model_name: bert-base-uncased
+    
 training:
+  type: multihead_cls
   epoch : 3
   batch_size : 16
   use_cuda : True
@@ -22,7 +24,6 @@ head:
     count: 3
     heads: MultiLabelCLS
     heads_index : [[0,1,2,6], [3,4,5,7,9], [8,10]]
-       # MultiClassCLS
 
 tokenizer:
   bert:
@@ -31,3 +32,6 @@ tokenizer:
     truncation: True  # truncate to a maximum length specified by the max_length
     max_length : 128
 
+optimizer:
+  name: AdamW
+  lr: 0.00002
