@@ -9,8 +9,8 @@ def setup_mlflow(experiment_name, tracking_uri, run_name):
 def store_param(key, value):
     log_param(key, value)
 
-def store_metric(key, value):
-    log_metric(key, value)
+def store_metric(key, value, step = None):
+    log_metric(key, value, step)
 
 def get_metrics(key):
     client = mlflow.tracking.MlflowClient()
