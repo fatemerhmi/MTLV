@@ -2,8 +2,9 @@ import logging
 import torch
 import io
 import os
-from src.mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_reader
 from tqdm import tqdm
+
+from src.mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_reader
 
 URLS = {
     'AG_NEWS':
@@ -126,7 +127,7 @@ def _setup_datasets(dataset_name, tokenizer, tokenizer_args, root='.data'):
     return (TextClassification(train_data, train_labels, tokenizer, tokenizer_args),
             TextClassification(test_data, test_labels, tokenizer, tokenizer_args))
 
-@register.setdatasetname("AG_NEWS") 
+
 def AG_NEWS(*args, **kwargs): #lower
     """ Defines AG_NEWS datasets.
         The labels includes:
@@ -149,7 +150,6 @@ def AG_NEWS(*args, **kwargs): #lower
 
     return _setup_datasets(*(("AG_NEWS",) + args), **kwargs)
 
-@register.setdatasetname("SogouNews")
 def SogouNews(*args, **kwargs):
     """ Defines SogouNews datasets.
         The labels includes:
@@ -173,7 +173,6 @@ def SogouNews(*args, **kwargs):
 
     return _setup_datasets(*(("SogouNews",) + args), **kwargs)
 
-@register.setdatasetname("DBpedia")
 def DBpedia(*args, **kwargs):
     """ Defines DBpedia datasets.
         The labels includes:
@@ -206,7 +205,6 @@ def DBpedia(*args, **kwargs):
 
     return _setup_datasets(*(("DBpedia",) + args), **kwargs)
 
-@register.setdatasetname("YelpReviewPolarity")
 def YelpReviewPolarity(*args, **kwargs):
     """ Defines YelpReviewPolarity datasets.
         The labels includes:
@@ -227,7 +225,6 @@ def YelpReviewPolarity(*args, **kwargs):
 
     return _setup_datasets(*(("YelpReviewPolarity",) + args), **kwargs)
 
-@register.setdatasetname("YelpReviewFull")
 def YelpReviewFull(*args, **kwargs):
     """ Defines YelpReviewFull datasets.
         The labels includes:
@@ -247,7 +244,6 @@ def YelpReviewFull(*args, **kwargs):
 
     return _setup_datasets(*(("YelpReviewFull",) + args), **kwargs)
 
-@register.setdatasetname("YahooAnswers")
 def YahooAnswers(*args, **kwargs):
     """ Defines YahooAnswers datasets.
         The labels includes:
@@ -276,7 +272,6 @@ def YahooAnswers(*args, **kwargs):
 
     return _setup_datasets(*(("YahooAnswers",) + args), **kwargs)
 
-@register.setdatasetname("AmazonReviewPolarity")
 def AmazonReviewPolarity(*args, **kwargs):
     """ Defines AmazonReviewPolarity datasets.
         The labels includes:
@@ -297,7 +292,6 @@ def AmazonReviewPolarity(*args, **kwargs):
 
     return _setup_datasets(*(("AmazonReviewPolarity",) + args), **kwargs)
 
-@register.setdatasetname("AmazonReviewFull")
 def AmazonReviewFull(*args, **kwargs):
     """ Defines AmazonReviewFull datasets.
         The labels includes:
