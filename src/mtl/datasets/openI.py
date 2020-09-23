@@ -11,6 +11,7 @@ import numpy as np
 
 from mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_reader
 from mtl.heads.utils import padding_heads, group_heads
+import mtl.utils.logger as mlflowLogger 
 
 """
     You can manually donwload the OpenIdataset and put it in the data directory in root. 
@@ -154,6 +155,10 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     label_cols = list(cols[6:])
     num_labels = len(label_cols)
 
+    #-------log how many labels + label cols
+    mlflowLogger.store_param("col_names", label_cols)
+    mlflowLogger.store_param("num_labels", num_labels)
+
     #-------convert string of list to actual list (labels)
     train_df = pd.read_csv(f"{split_path}/train.csv")
     train_df['labels'] = train_df.apply(lambda row: ast.literal_eval(row['labels']), axis=1)
@@ -167,6 +172,7 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     #-------check for multi-head
     if head_type =="multi-head":
         heads_index = head_args["heads_index"]
+        mlflowLogger.store_param("heads_index", heads_index)
         padded_heads = padding_heads(heads_index)
         train_df = group_heads(padded_heads, train_df)
         test_df = group_heads(padded_heads, test_df)
@@ -177,6 +183,7 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     if head_type=="multi-task": 
         print("TODO: [openI.py] Develope multi-task")
         return
+
     #-------tokenize
     reports_train = train_df.text.to_list()
     reports_test = test_df.text.to_list()
