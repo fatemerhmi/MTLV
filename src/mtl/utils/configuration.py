@@ -6,8 +6,10 @@ import importlib
 import mtl.datasets as datasets
 import mtl.tokenizers as tokenizers
 import mtl.models as models
+import mtl.optimizers as optimizers
+import mtl.utils.logger as mlflowLogger 
 
-__all__ = ["setup_model", "setup_dataset", "load_config", "setup_optimizer"]
+__all__ = ["setup_model", "setup_dataset", "load_config", "setup_optimizer", "setup_mlflow"]
 
 def setup_model(model_cfg):
     #-------model name and args:
@@ -27,8 +29,13 @@ def setup_model(model_cfg):
         # print(tokenizer_obj)
     else:
         available_model_type_list = str(imported_model_module.__all__).replace("_", "-")
-        raise NameError(f'{model_args["model_name"]} does not appear in this lists of tokenizers we support: {available_model_type_list}')
+        raise NameError(f'{model_args["model_name"]} does not appear in this lists of models we support: {available_model_type_list}')
     
+    #-------log model name and args to mlflow
+    mlflowLogger.store_param("model", model_name)
+    for arg in model_args:
+        mlflowLogger.store_param("model."+model_family+"."+arg , model_args[arg])
+
     return model_obj
 
 def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
@@ -38,15 +45,30 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
     dataset_args = list(dataset_cfg.values())[0]
     print(f"[  setup dataset  ] datset name: {dataset_name}, dataset arge: {dataset_args}")
 
+    #-------log dataset name and args to mlflow
+    mlflowLogger.store_param("dataset", dataset_name)
+    for arg in dataset_args:
+        mlflowLogger.store_param("dataset.".+dataset_name+"."+arg , dataset_args[arg])
+
     #-------tokenizer name and args:
     tokenizer_name = list(tokenizer_cfg.keys())[0]
     tokenizer_args = list(tokenizer_cfg.values())[0]
     print(f"[  setup tokenizer  ] tokenizer name: {tokenizer_name}, Tokenizer arge: {tokenizer_args}")
 
+    #-------log tokenizer name and args to mlflow
+    mlflowLogger.store_param("tokenizer", tokenizer_name)
+    for arg in tokenizer_args:
+        mlflowLogger.store_param("tokenizer.".+tokenizer_name+"."+arg , tokenizer_args[arg])
+
     #-------head name and args
     head_type = list(head_cfg.keys())[0]
     head_args = list(head_cfg.values())[0]
     print(f"[  setup head  ] head type: {head_type}, head arge: {head_args}")
+
+    #-------log head name and args to mlflow
+    mlflowLogger.store_param("head", head_type)
+    for arg in head_args:
+        mlflowLogger.store_param("head.".+head_type+"."+arg , head_args[arg])
 
     #-------get all the available tokenizers:
     available_tokenizers = tokenizers.__all__
@@ -74,7 +96,29 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
     return train_dataloader, val_dataloader, test_dataloader
 
 def setup_optimizer(optimizer_cfg):
+    #-------optimizer name and args:
+    optimizer_type = list(optimizer_cfg.keys())[0]
+    optimizer_args = list(optimizer_cfg.values())[0]
+    print(f"[  setup optimizer  ] optimizer type: {optimizer_type}, optimizer arge: {optimizer_args}")
+    available_optimizers = optimizers.__all__
+    if optimizer_type in available_optimizers:
+        imported_optimizer_module = importlib.import_module( "mtl.optimizers."+ optimizer_type)
+    else:
+        raise NameError(f'{optimizer_type} does not appear in this lists of optimizers we support: {available_optimizers}')
 
+    #-------get the optimizer obj
+    optimizer_name = optimizer_args['name']
+    if optimizer_name in imported_optimizer_module.__all__:
+        optimizer_obj = getattr(imported_optimizer_module,optimizer_name)
+    else:
+        raise NameError(f'{optimizer_name} does not appear in this lists of optimizers we support: {available_optimizers}')
+    
+    #-------log optimizer name and args to mlflow
+    mlflowLogger.store_param("optimizer", optimizer_type)
+    for arg in optimizer_args:
+        mlflowLogger.store_param("optimizer.".+optimizer_type+"."+arg , optimizer_args[arg])
+
+    return optimizer_obj
 
 def load_config(config_file):
 
@@ -106,3 +150,10 @@ def verify_config(config):
         raise Exception("Number of heads shouls at least be one.")
 
     return cfg
+
+def setup_mlflow(mlflow_cfg):
+    experiment_name = mlflow_cfg['experiment_name']
+    run_name = mlflow_cfg['run_name']
+    tracking_uri = mlflow_cfg['tracking_uri']
+    mlflowLogger.setup_mlflow(experiment_name, tracking_uri, run_name)
+    print("[  setup mlflow ] mlflow successfuly set up!")
