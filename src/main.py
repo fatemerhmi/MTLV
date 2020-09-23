@@ -16,6 +16,7 @@ import mtl.utils.configuration as configuration
 from training import train
 
 
+
 @click.group()
 def main():
     """The package help is as follows."""
@@ -30,17 +31,20 @@ def run(config, gpu_id=0):
     cfg = configuration.verify_config(config)
     # print(cfg)
 
-    ##-------check cuda
+    #-------setup mlflow
+    configuration.setup_mlflow(cfg['mlflow'])
+
+    #-------check cuda
     if cfg['training']['use_cuda']:
         use_cuda = torch.cuda.is_available()
-        torch.cuda.set_device(gpu_id)
+        if use_cuda == False:
+            print("[  use_cuda  ] No GPU available in your machine, will be using CPU")
+        if use_cuda == True:
+            device_name = torch.cuda.get_device_name(gpu_id)
+            print(f"[  use_cuda  ]  will be using: {device_name}")
+            torch.cuda.set_device(gpu_id)
     else:
         use_cuda = False
-
-    if use_cuda:
-        print('[  main  ] Running on GPU')
-    else:
-        print('[  main  ] Running on CPU')
 
     #-------Getting training args
     epoch = cfg['training']["epoch"]
@@ -52,14 +56,14 @@ def run(config, gpu_id=0):
     train_dataloader, val_dataloader, test_dataloader = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], batch_size)
 
     #-------Setup Head
-    
+    #TODO: mighe need it for MTL
 
     #-------setup model
-
+    # Load model, the pretrained model will include a single linear classification layer on top for classification. 
+    model = configuration.setup_model(cfg['model'])
 
     #-------start training
-    train()
-
+    train(train_dataloader, val_dataloader, test_dataloader, model, cfg['training'], use_cuda, cfg['optimizer'])
 
 
 # def main():
