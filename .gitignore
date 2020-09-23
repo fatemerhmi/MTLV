@@ -4,6 +4,7 @@ findings_frequency.tex
 outputs/
 runs/
 model_wieghts/
+mlruns/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
