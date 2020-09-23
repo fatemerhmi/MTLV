@@ -48,7 +48,7 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
     #-------log dataset name and args to mlflow
     mlflowLogger.store_param("dataset", dataset_name)
     for arg in dataset_args:
-        mlflowLogger.store_param("dataset.".+dataset_name+"."+arg , dataset_args[arg])
+        mlflowLogger.store_param("dataset."+dataset_name+"."+arg , dataset_args[arg])
 
     #-------tokenizer name and args:
     tokenizer_name = list(tokenizer_cfg.keys())[0]
@@ -58,7 +58,7 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
     #-------log tokenizer name and args to mlflow
     mlflowLogger.store_param("tokenizer", tokenizer_name)
     for arg in tokenizer_args:
-        mlflowLogger.store_param("tokenizer.".+tokenizer_name+"."+arg , tokenizer_args[arg])
+        mlflowLogger.store_param("tokenizer."+tokenizer_name+"."+arg , tokenizer_args[arg])
 
     #-------head name and args
     head_type = list(head_cfg.keys())[0]
@@ -68,7 +68,7 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
     #-------log head name and args to mlflow
     mlflowLogger.store_param("head", head_type)
     for arg in head_args:
-        mlflowLogger.store_param("head.".+head_type+"."+arg , head_args[arg])
+        mlflowLogger.store_param("head."+head_type+"."+arg , head_args[arg])
 
     #-------get all the available tokenizers:
     available_tokenizers = tokenizers.__all__
@@ -95,7 +95,7 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
 
     return train_dataloader, val_dataloader, test_dataloader
 
-def setup_optimizer(optimizer_cfg):
+def setup_optimizer(optimizer_cfg, model_parameters):
     #-------optimizer name and args:
     optimizer_type = list(optimizer_cfg.keys())[0]
     optimizer_args = list(optimizer_cfg.values())[0]
@@ -116,9 +116,9 @@ def setup_optimizer(optimizer_cfg):
     #-------log optimizer name and args to mlflow
     mlflowLogger.store_param("optimizer", optimizer_type)
     for arg in optimizer_args:
-        mlflowLogger.store_param("optimizer.".+optimizer_type+"."+arg , optimizer_args[arg])
-
-    return optimizer_obj
+        mlflowLogger.store_param("optimizer."+optimizer_type+"."+arg , optimizer_args[arg])
+    # print(optimizer_obj)
+    return optimizer_obj(params = model_parameters, lr = optimizer_args['lr'])
 
 def load_config(config_file):
 
