@@ -6,24 +6,24 @@ __all__ = ["calculate_f1_acc", "calculate_f1_acc_test"]
 def calculate_f1_acc(pred_labels, true_labels, threshold = 0.50):
     pred_bools = [pl>threshold for pl in pred_labels]
     true_bools = [tl==1 for tl in true_labels]
-    val_f1_accuracy = f1_score(true_bools,pred_bools,average='micro')*100
-    val_flat_accuracy = accuracy_score(true_bools, pred_bools)*100
-
-    print('Validation F1: ', val_f1_accuracy)
-    print('Validation Accuracy: ', val_flat_accuracy)
+    f1 = f1_score(true_bools,pred_bools,average='micro')*100
+    acc = accuracy_score(true_bools, pred_bools)*100
+    LRAP = label_ranking_average_precision_score(true_labels, pred_labels)
+    return f1, acc, LRAP
 
 def calculate_f1_acc_test(pred_labels, true_labels, test_label_cols, threshold = 0.50):
     pred_bools = [pl>threshold for pl in pred_labels]
     true_bools = [tl==1 for tl in true_labels] 
-    print("-----------test-----------")
-    print("Threshold: 0.5")
-    print('Test F1 Score: ', f1_score(true_bools, pred_bools,average='micro'))
-    print('Test Accuracy: ', accuracy_score(true_bools, pred_bools))
-    print('LRAP: ', label_ranking_average_precision_score(true_labels, pred_labels) ,'\n')
+    # print("-----------test-----------")
+    # print("Threshold: 0.5")
+    f1 = f1_score(true_bools, pred_bools,average='micro')*100
+    acc = accuracy_score(true_bools, pred_bools)
+    LRAP = label_ranking_average_precision_score(true_labels, pred_labels) 
     clf_report = classification_report(true_bools,pred_bools,target_names=test_label_cols)
-    # pickle.dump(clf_report, open('classification_report.txt','wb')) #save report
-    print(clf_report)
+    # print(clf_report)
+    return f1, acc, LRAP, clf_report
 
+def calculate_f1_acc_test_opt(pred_labels, true_labels, test_label_cols, threshold = 0.50):
     # Calculate Accuracy - maximize F1 accuracy by tuning threshold values. First with 'macro_thresholds' on the order of e^-1 then with 'micro_thresholds' on the order of e^-2
     print("-----Optimizing threshold value for micro F1 score-----")
 
@@ -61,3 +61,4 @@ def calculate_f1_acc_test(pred_labels, true_labels, test_label_cols, threshold =
     clf_report_optimized = classification_report(true_bools,best_pred_bools, target_names=test_label_cols)
     # pickle.dump(clf_report_optimized, open('classification_report_optimized.txt','wb'))
     print(clf_report_optimized)
+
