@@ -1,5 +1,7 @@
-experiment_name:
-  OpenI_1layer
+mlflow:
+  experiment_name: OpenI_1layer
+  run_name: Multi-head3
+  tracking_uri: mlruns
 
 dataset: 
   openI:
@@ -15,7 +17,7 @@ model:
     
 training:
   type: multihead_cls
-  epoch : 3
+  epoch : 1
   batch_size : 16
   use_cuda : True
 
@@ -33,5 +35,6 @@ tokenizer:
     max_length : 128
 
 optimizer:
-  name: AdamW
-  lr: 0.00002
+  adam:
+    name: AdamW
+    lr: 0.00002
