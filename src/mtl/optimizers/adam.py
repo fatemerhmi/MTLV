@@ -7,8 +7,8 @@ import transformers
 
 __all__ = ["AdamW"]
 
-def AdamW():
+def AdamW(**kwargs):
     """
     Adam algorithm with weight decay fix as introduced in Decoupled Weight Decay Regularization.
     """
-    return transformers.AdamW
+    return transformers.AdamW(**kwargs)
