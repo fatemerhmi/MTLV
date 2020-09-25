@@ -65,37 +65,5 @@ def run(config, gpu_id=0):
     #-------start training
     train(train_dataloader, val_dataloader, test_dataloader, model, cfg['training'], use_cuda, cfg['optimizer'])
 
-
-# def main():
-#     #------------dataset details------------
-#     DATA_DIR = "./data"
-#     data_path = f'{DATA_DIR}/OpenI/OpenI_cheXpertLabels.csv'
-#     split_path = f'{DATA_DIR}/OpenI/cheXpertLabels'
-#     use_data_loader = True
-
-#     epochs = 3 # Number of training epochs (authors recommend between 2 and 4)
-#     batch_size = 16
-#     max_length = 128
-    
-#     model_name = 'bert-base-uncased'
-#     tokenizer_name = "bert-base-uncased"
-
-#     # # model_name = "bert-base-cased"
-#     # # tokenizer_name = "bert-base-cased"
-
-#     ModelTokenizer = BertTokenizer
-#     PreTrainedModel = BertCLS
-
-#     #medical sense
-#     group1 = [0,1,2,6]  #{'No Finding', 'Cardiomegaly','Lung Opacity','Atelectasis'}
-#     group2 = [3,4,5,7,9] #{'Edema','Consolidation','Pneumonia', 'Pneumothorax','Fracture'}
-#     group3 = [8,10] #{'Pleural Effusion','SupportDevices',}
-#     heads_index = [group1, group2, group3]
-#     col_names = ['No Finding', 'Cardiomegaly', 'Lung Opacity', 'Edema', 'Consolidation', 'Pneumonia', 
-#                 'Atelectasis', 'Pneumothorax', 'Pleural Effusion', 'Fracture', 'SupportDevices']
-#     multihead_cls(data_path,split_path, PreTrainedModel, epochs, batch_size, max_length ,
-#                ModelTokenizer, tokenizer_name, model_name, use_data_loader, heads_index, col_names)
-
-
 if __name__ == "__main__":
     main()
