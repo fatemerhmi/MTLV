@@ -135,7 +135,7 @@ def load_config(config_file):
 def verify_config(config):
     cfg = load_config(config)
 
-    required_keys = ['dataset', 'model', 'training', 'head', 'tokenizer']
+    required_keys = ['dataset', 'model', 'training', 'head', 'tokenizer', 'loss', 'optimizer']
     if any(key not in cfg for key in required_keys):
         raise Exception(f"Missing key in configuration file. Required keys are: {required_keys}")
     
@@ -147,7 +147,20 @@ def verify_config(config):
     # Head:
     head_args = list(cfg['head'].values())[0]
     if head_args['count']<1:
-        raise Exception("Number of heads shouls at least be one.")
+        raise Exception("Number of heads should at least be one.")
+
+    # the len of head_index should be the same as count
+    # print("____")
+    head_type = list(cfg['head'].keys())[0]
+    if head_type == "multi-head":
+        if int(head_args['count']) != len(head_args['heads_index']):
+            raise Exception("In multi-head configuration, the count and length of head_index should match!")
+
+    # if loss config is weightedloss, then its len should match with the head count 
+    loss_args = cfg['loss']
+    if loss_args['type'] == "weightedloss":
+        if len(loss_args['weights']) != int(head_args['count']):
+            raise Exception("In multi-head configuration, the head count and length of weights should match!")
 
     return cfg
 
