@@ -1,6 +1,7 @@
 import torch
 import yaml
 import importlib
+import ast
 
 # from mtl.datasets import *
 import mtl.datasets as datasets
@@ -8,6 +9,7 @@ import mtl.tokenizers as tokenizers
 import mtl.models as models
 import mtl.optimizers as optimizers
 import mtl.utils.logger as mlflowLogger 
+import mtl.utils.loss as losses
 
 __all__ = ["setup_model", "setup_dataset", "load_config", "setup_optimizer", "setup_mlflow"]
 
@@ -120,6 +122,26 @@ def setup_optimizer(optimizer_cfg, model_parameters):
     # print(optimizer_obj)
     return optimizer_obj(params = model_parameters, lr = optimizer_args['lr'])
 
+def setup_loss(loss_cfg):
+    #-------loss type and args:
+    loss_type = loss_cfg['type']
+    loss_args = loss_cfg
+    print(f"[  setup loss  ] loss type: {loss_type}, loss arge: {loss_args}")
+    available_loss = losses.__all__
+    imported_loss_modules = importlib.import_module( "mtl.utils.loss")
+
+    #-------get the loss func
+    if loss_type in imported_loss_modules.__all__:
+        loss_func = getattr(imported_loss_modules,loss_type)
+    else:
+        raise NameError(f'{loss_type} does not appear in this lists of loss functions we support: {available_loss}')
+    
+    #-------log loss type and args to mlflow
+    for arg in loss_args:
+        mlflowLogger.store_param("loss."+arg , loss_args[arg])
+
+    return loss_func
+
 def load_config(config_file):
 
     default_config = {
@@ -161,6 +183,11 @@ def verify_config(config):
     if loss_args['type'] == "weightedloss":
         if len(loss_args['weights']) != int(head_args['count']):
             raise Exception("In multi-head configuration, the head count and length of weights should match!")
+    
+    # check if the sum of all weights will be 1:
+    if loss_args['type'] == "weightedloss":
+        if sum(ast.literal_eval(loss_args['weights'])) != 1:
+            raise Exception("The sum of loss weights should be 1!")
 
     return cfg
 
