@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MH_3head_weightedloss_bert
+  run_name: MH_signlehead_avgloss_bert
   tracking_uri: mlruns
 
 dataset: 
@@ -16,8 +16,8 @@ model:
     model_name: bert-base-uncased
     
 training:
-  type: multihead_cls
-  # type: singlehead_cls
+  # type: multihead_cls
+  type: singlehead_cls
   epoch : 300
   batch_size : 16
   use_cuda : True
@@ -26,12 +26,12 @@ head:
   single-head:
     heads: MultiLabelCLS
 
-head: 
-  # single-head: # or multi-task 
-  multi-head:
-    count: 3
-    heads: MultiLabelCLS
-    heads_index : [[0,1,2,3], [4,5,6], [7,8,9,10]]
+# head: 
+#   single-head: # or multi-task 
+#   multi-head:
+#     # count: 3
+#     heads: MultiLabelCLS
+#     heads_index : [[0,1,2,3], [4,5,6], [7,8,9,10]]
 
 tokenizer:
   bert:
