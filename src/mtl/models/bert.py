@@ -9,6 +9,7 @@ class BertCLS(BertPreTrainedModel):
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.init_weights()
+        self.hidden_size_BertCLS = config.hidden_size
 
 
     def forward(
@@ -41,21 +42,21 @@ class BertCLS(BertPreTrainedModel):
     
 def bert_base_uncased():
     model =  BertCLS.from_pretrained('bert-base-uncased')
-    model.embedding_size = 768
+    model.embedding_size = model.hidden_size_BertCLS
     return model
 
 def bert_large_uncased():
     model = BertCLS.from_pretrained('bert-base-uncased')
-    model.embedding_size = 1024
+    model.embedding_size = model.hidden_size_BertCLS
     return model
 
 
 def bert_base_cased():
     model = BertCLS.from_pretrained('bert-base-cased')
-    model.embedding_size = 768
+    model.embedding_size = model.hidden_size_BertCLS
     return model
 
 def bert_large_cased():
     model = BertCLS.from_pretrained('bert-large-cased')
-    model.embedding_size = 1024
+    model.embedding_size = model.hidden_size_BertCLS
     return model
