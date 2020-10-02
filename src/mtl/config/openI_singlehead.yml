@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MH_signlehead_avgloss_bert
+  run_name: signlehead_bert
   tracking_uri: mlruns
 
 dataset: 
@@ -18,7 +18,7 @@ model:
 training:
   # type: multihead_cls
   type: singlehead_cls
-  epoch : 300
+  epoch : 10
   batch_size : 16
   use_cuda : True
 
@@ -45,8 +45,8 @@ optimizer:
     name: AdamW
     lr: 0.00002
 
-loss:
-  type: avgloss #sumloss #
+# loss:
+#   type: avgloss #sumloss #
 
 # loss:
 #   type: weightedloss
