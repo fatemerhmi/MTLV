@@ -15,8 +15,6 @@ from mtl.heads.clsHeads import *
 import mtl.utils.configuration as configuration
 from training import train
 
-
-
 @click.group()
 def main():
     """The package help is as follows."""
@@ -63,7 +61,8 @@ def run(config, gpu_id=0):
     model = configuration.setup_model(cfg['model'])
 
     #-------start training
-    train(train_dataloader, val_dataloader, test_dataloader, model, cfg['training'], use_cuda, cfg['optimizer'])
+
+    train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda)
 
 if __name__ == "__main__":
     main()
