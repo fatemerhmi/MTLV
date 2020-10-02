@@ -7,34 +7,32 @@ __all__ = ["HeadMultilabelCLS", "HeadMulticlassCLS"]
 
 class Head():
     def __init__(self,hparams):
-        self.inputLayer = hparams['inputLayer']
-        self.run()
+        self.device = hparams['device']
+        # self.inputLayer = hparams['inputLayer']
+        # self.run()
     def run(self):
         pass
 
 class HeadMultilabelCLS(Head):
     def __init__(self,hparams):
-        self.labels = hparams['labels'] # batch labels, or all labels
-        self.device = hparams['device']
-        self.num_labels = hparams['num_labels'] # number of labels
-        self.taskspecificLayer = nn.Linear(hparams['input_size'], hparams['num_labels']).to(self.device) #classifier
-        self.loss = None
-        self.logits = None
-        self.pred_labels = None
-        
+        # self.labels = hparams['labels'] # batch labels, or all labels
         super().__init__(hparams)
         
-    def run(self):
-        self.logits = self.taskspecificLayer(self.inputLayer)
-        self.pred_label = torch.sigmoid(self.logits)
+        self.num_labels = hparams['num_labels'] # number of labels
+        self.taskspecificLayer = nn.Linear(hparams['input_size'], hparams['num_labels']).to(self.device) #classifier
+        
+        
+    def run(self, inputLayer, labels):
+        logits = self.taskspecificLayer(inputLayer)
+        pred_label = torch.sigmoid(logits)
         
         loss_func = BCEWithLogitsLoss() 
-        self.loss = loss_func(self.logits.view(-1,self.num_labels),
-                         self.labels.type_as(self.logits).view(-1,self.num_labels)) #convert labels to float for calculation
+        loss = loss_func(logits.view(-1,self.num_labels),
+                         labels.type_as(logits).view(-1,self.num_labels)) #convert labels to float for calculation
         # loss_func = BCELoss() 
         # loss = loss_func(torch.sigmoid(logits.view(-1,num_labels)),b_labels.type_as(logits).view(-1,num_labels)) #convert labels to float for calculation
         
-        return self.loss  
+        return loss, pred_label 
     
     
 class HeadMulticlassCLS(Head):
