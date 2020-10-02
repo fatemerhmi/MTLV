@@ -9,7 +9,11 @@ from mtl.heads.clsHeads import *
 from mtl.utils.evaluate import *
 import mtl.utils.logger as mlflowLogger 
 
-def train(train_dataloader, val_dataloader, test_dataloader, model, training_args, use_cuda, cfg_optimizer):
+def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cuda):
+    #-------config
+    training_args = cfg['training']
+    cfg_optimizer = cfg['optimizer']
+
     #-------training args:
     if use_cuda:
         print('[  training  ] Running on GPU.')
@@ -21,11 +25,14 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, training_arg
 
     #-------training type:
     if training_type == "multihead_cls":
+        cfg_loss = cfg['loss']
         print(f"[  training  ] The training type is: Multi-head classification.")
-        multihead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
+        multihead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
+    elif training_type == "singlehead_cls":
+        singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
+    return
 
-
-def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer):
+def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss):
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
     heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
@@ -44,7 +51,10 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
     #-------load optimizer
     optimizer = configuration.setup_optimizer(cfg_optimizer, model.parameters())
     # optimizer = optimizer_obj(model.parameters(),lr=2e-5)  # Default optimization
-    
+
+    #-------load loss
+    loss_func = configuration.setup_loss(cfg_loss)
+
     #-------FineTune model
     # trange is a tqdm wrapper around the normal python range
     for e in trange(epoch, desc="Epoch"):
@@ -85,14 +95,16 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
                     'inputLayer' : outputs,
                     'device'     : device,
                 }
-                head_losses.append(HeadMultilabelCLS(hparams))
+                head_losses.append(HeadMultilabelCLS(hparams).loss)
             
-            loss = 0
-            batch_traning_headloss = []
-            for head in head_losses:
-                loss += head.loss 
-                batch_traning_headloss.append(head.loss)
-            train_headloss = np.sum([train_headloss, batch_traning_headloss], axis=0)
+            #--------head loss
+            train_headloss = np.sum([train_headloss, head_losses], axis=0)
+
+            #------total loss and backprop
+            if 'weights' in cfg_loss:
+                loss = loss_func(head_losses, cfg_loss['weights'])
+            else:
+                loss = loss_func(head_losses)
             # Backward pass
             loss.backward()
             
@@ -161,7 +173,6 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
                     torch.cat([pred_head_label for pred_head_label in pred_label_b],1)
                     .to('cpu').numpy())
 
-        # print("Results of all heads:")
         true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
         pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
         val_f1, val_acc, _ = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
@@ -174,7 +185,6 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
         
         # print("Results of each head:")
         for i in range(0,nheads):
-            # print(f"Head_{i}")
             i_head_true_labels = true_labels_each_head[:,i]
             i_head_true_labels = torch.cat([item for item in i_head_true_labels],0).to('cpu').numpy()
             
@@ -260,3 +270,181 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
         mlflowLogger.store_metric(f"test.headLRAP.{i}", testhead_LRAP, e)
 
     mlflowLogger.finish_mlflowrun()
+
+def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer):
+    #-------get params from mlflow
+    col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
+    col_count = len(col_names)
+
+    #-------load model
+    if use_cuda:
+        device = "cuda"
+        model.cuda()
+    else:
+        device = "cpu"
+
+    #-------load optimizer
+    optimizer = configuration.setup_optimizer(cfg_optimizer, model.parameters())
+    # optimizer = optimizer_obj(model.parameters(),lr=2e-5)  # Default optimization
+
+    #-------load Head
+    hparams={
+        # 'labels' : b_labels,
+        'num_labels' : col_count,
+        'input_size' : model.embedding_size,
+        # 'inputLayer' : outputs,
+        'device'     : device,
+    }
+
+    #TODO: replace this with setup head
+    classification_head = HeadMultilabelCLS(hparams)
+
+    #-------FineTune model
+    # trange is a tqdm wrapper around the normal python range
+    for e in trange(epoch, desc="Epoch"):
+        print("epoch", e)
+        #==========Training======================
+        # Set our model to training mode (as opposed to evaluation mode)
+        model.train()
+
+        # Tracking variables
+        tr_loss = 0 #running loss
+        nb_tr_examples, nb_tr_steps = 0, 0
+
+        # Train the data for one epoch
+        for step, batch in enumerate(train_dataloader):
+            # Add batch to GPU
+            batch = tuple(t.to(device) for t in batch)
+            
+            # Unpack the inputs from our dataloader
+            b_input_ids, b_input_mask, b_labels = batch
+
+            # Clear out the gradients (by default they accumulate)
+            optimizer.zero_grad()
+
+            #Forward pass for multihead
+            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+
+            loss, _ = classification_head.run(outputs, b_labels)
+
+            # Backward pass
+            loss.backward()
+            
+            # Update parameters and take a step using the computed gradient
+            optimizer.step()
+            # scheduler.step()
+            
+            # Update tracking variables
+            tr_loss += loss.item()
+            nb_tr_examples += b_input_ids.size(0)
+            nb_tr_steps += 1
+
+        mlflowLogger.store_metric("training.loss", tr_loss/nb_tr_steps, e)
+
+        #===========Validation==========
+        # Put model in evaluation mode to evaluate loss on the validation set
+        model.eval()
+
+        # Variables to gather full output
+        true_labels_signlehead, pred_labels_singlehead = [],[]
+        
+        # Predict
+        for i, batch in enumerate(validation_dataloader):
+            batch = tuple(t.to(device) for t in batch)
+            # Unpack the inputs from our dataloader
+            b_input_ids, b_input_mask, b_labels = batch
+            with torch.no_grad():
+                outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+
+                loss, pred_label_b = classification_head.run(outputs, b_labels)
+
+                true_labels_signlehead.append(b_labels)
+                pred_labels_singlehead.append(pred_label_b)
+        
+        true_labels_signlehead = np.concatenate([item.to('cpu').numpy() for item in true_labels_signlehead])
+        pred_labels_singlehead = np.concatenate([item.to('cpu').numpy() for item in pred_labels_singlehead])
+
+        val_f1, val_acc, _ = calculate_f1_acc(pred_labels_singlehead, true_labels_signlehead)
+
+        mlflowLogger.store_metric("validation.acc", val_acc, e)
+        mlflowLogger.store_metric("validation.f1", val_f1, e)
+
+    #============test=============
+    # print("test")
+    # Put model in evaluation mode to evaluate loss on the validation set
+    model.eval()
+
+    # #track variables
+    # true_labels_each_head,pred_labels_each_head = [],[]
+    # true_labels_all_head,pred_labels_all_head = [],[]
+    # # Predict
+    # for i, batch in enumerate(test_dataloader):
+    #     batch = tuple(t.to(device) for t in batch)
+    #     # Unpack the inputs from our dataloader
+    #     b_input_ids, b_input_mask, b_labels = batch
+    #     with torch.no_grad():
+    #         outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+
+    #         pred_label_heads = []
+    #         true_label_heads = []
+    #         for i in range(0,nheads):
+    #             #remove -1 paddings:
+    #             labels = b_labels[:,i,:]
+    #             labels = labels[:,0:head_count[i]]
+
+    #             hparams={
+    #                 'labels' : labels,
+    #                 'num_labels' : len(heads_index[i]),
+    #                 'input_size' : outputs[0].size()[0],
+    #                 'inputLayer' : outputs,
+    #                 'device'     : device,
+    #             }
+    #             pred_label_heads.append(HeadMultilabelCLS(hparams).pred_label)
+    #             true_label_heads.append(labels)
+
+    #         #store batch labels 
+    #         pred_label_b = np.array(pred_label_heads)
+    #         true_labels_b = np.array(true_label_heads)
+
+    #         #store each head label seperatly
+    #         true_labels_each_head.append(true_labels_b)
+    #         pred_labels_each_head.append(pred_label_b)
+
+    #         #store all head labels together
+    #         true_labels_all_head.append(
+    #             torch.cat([true_head_label for true_head_label in true_labels_b],1)
+    #             .to('cpu').numpy())
+    #         pred_labels_all_head.append(
+    #             torch.cat([pred_head_label for pred_head_label in pred_label_b],1)
+    #             .to('cpu').numpy())
+
+    # true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
+    # pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
+
+    # Variables to gather full output
+    true_labels_signlehead, pred_labels_singlehead = [],[]
+    
+    # Predict
+    for i, batch in enumerate(test_dataloader):
+        batch = tuple(t.to(device) for t in batch)
+        # Unpack the inputs from our dataloader
+        b_input_ids, b_input_mask, b_labels = batch
+        with torch.no_grad():
+            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+
+            loss, pred_label_b = classification_head.run(outputs, b_labels)
+
+            true_labels_signlehead.append(b_labels)
+            pred_labels_singlehead.append(pred_label_b)
+    
+    true_labels_signlehead = np.concatenate([item.to('cpu').numpy() for item in true_labels_signlehead])
+    pred_labels_singlehead = np.concatenate([item.to('cpu').numpy() for item in pred_labels_singlehead])
+    
+    test_f1, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_singlehead, true_labels_signlehead, col_names)
+    mlflowLogger.store_metric(f"test.f1", test_f1)
+    mlflowLogger.store_metric(f"test.acc", test_acc)
+    mlflowLogger.store_metric(f"test.LRAP", test_LRAP)
+    mlflowLogger.store_artifact(test_clf_report)
+
+    mlflowLogger.finish_mlflowrun()
+    
