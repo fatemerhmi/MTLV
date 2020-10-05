@@ -7,8 +7,8 @@ dataset:
   openI:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
-    data_path: openI/OpenI_cheXpertLabels.csv
-    split_path: openI/cheXpertLabels
+    data_path: OpenI/openI.csv
+    # split_path: openI/cheXpertLabels
     use_data_loader: True
 
 model: 
@@ -18,7 +18,7 @@ model:
 training:
   # type: multihead_cls
   type: singlehead_cls
-  epoch : 10
+  epoch : 5
   batch_size : 16
   use_cuda : True
 

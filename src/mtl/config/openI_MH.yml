@@ -7,8 +7,8 @@ dataset:
   openI:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
-    data_path: openI/OpenI_cheXpertLabels.csv
-    split_path: openI/cheXpertLabels
+    data_path: OpenI/openI.csv
+    # split_path: openI/cheXpertLabels
     use_data_loader: True
 
 model: 
@@ -22,13 +22,13 @@ training:
   batch_size : 16
   use_cuda : True
 
-head: 
-  single-head:
-    heads: MultiLabelCLS
+# head: 
+#   single-head:
+#     heads: MultiLabelCLS
 
 head: 
   # single-head: # or multi-task 
-  multi-head:
+  multi-task:
     count: 3
     heads: MultiLabelCLS
     heads_index : [[0,1,2,3], [4,5,6], [7,8,9,10]]
@@ -46,7 +46,7 @@ optimizer:
     lr: 0.00002
 
 loss:
-  type: avgloss #sumloss #
+  type: avgloss #sumloss 
 
 # loss:
 #   type: weightedloss
