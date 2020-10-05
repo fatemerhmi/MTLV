@@ -20,6 +20,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
     else:
         print('[  training  ] Running on CPU.')
 
+    configuration.log_training_args(training_args)
     training_type = training_args['type']
     epoch = training_args['epoch']
 
@@ -54,6 +55,18 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
 
     #-------load loss
     loss_func = configuration.setup_loss(cfg_loss)
+
+    #-------load Head
+    hparams={
+        # 'labels' : b_labels,
+        'num_labels' : col_count,
+        'input_size' : model.embedding_size,
+        # 'inputLayer' : outputs,
+        'device'     : device,
+    }
+    
+    #TODO: replace this with setup head
+    classification_head = HeadMultilabelCLS(hparams)
 
     #-------FineTune model
     # trange is a tqdm wrapper around the normal python range
