@@ -5,6 +5,8 @@ outputs/
 runs/
 model_wieghts/
 mlruns/
+artifacts/
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
