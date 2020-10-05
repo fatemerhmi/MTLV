@@ -27,7 +27,7 @@ This will initialize your local configuration file
 ## Run your experiments:
 python3 src/main.py --help       
 python3 src/main.py run --config src/mtl/config/openI_1layer.yml      
-
+python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1
 
 # Datasts:
 1. [20newsgroup](http://qwone.com/~jason/20Newsgroups/)        
@@ -44,8 +44,10 @@ The [original version](http://disi.unitn.eu/moschitti/corpora/ohsumed-all-docs.t
 [Steps to Access the data](https://mimic.physionet.org/gettingstarted/access/)
 
 4. Open-I         
-[Dataset Description](https://openi.nlm.nih.gov/faq#collection)           
-[Download](https://openi.nlm.nih.gov/imgs/collections/NLMCXR_reports.tgz)           
+[Dataset Description](https://openi.nlm.nih.gov/faq#collection)              
+[Download](https://openi.nlm.nih.gov/imgs/collections/NLMCXR_reports.tgz)          
+If you identify openI dataset in the config file. It will automatically download and preprocess it for you.         
+to see the details: `src/mtl/datasets/openI.py`    
 
 5. Reuter           
 The [Original Version](http://kdd.ics.uci.edu/databases/reuters21578/reuters21578.html) with ... categories
