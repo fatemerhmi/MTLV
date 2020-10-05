@@ -2,3 +2,5 @@ pandas
 mlflow
 ipdb
 tqdm
+pyunpack
+scikit-multilearn
