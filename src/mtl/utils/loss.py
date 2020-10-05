@@ -1,4 +1,3 @@
-import ast
 
 __all__ = ['sumloss', 'avgloss', 'weightedloss']
 
@@ -20,16 +19,11 @@ def avgloss(head_losses):
 #-------weighted loss avg function
 # len of wieght loss should be the same as head count 
 def weightedloss(head_losses, weights):
-    weights = ast.literal_eval(weights)
     loss = 0
-    for head, weight in zip(head_loss, weights):
-        loss = head*weight
-    print(head_losses)
-    print(type(head_loss))
-    print(weights)
-    print(type(weights))
-
-    return loss
+    for head, weight in zip(head_losses, weights):
+        loss += head*weight
+    count = len(head_losses)
+    return loss/count
 
 #-------
 # def 
