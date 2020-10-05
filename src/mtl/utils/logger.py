@@ -29,7 +29,7 @@ def finish_mlflowrun():
 
 def store_artifact(txt):
     #1. make artifacts directory in mlrun
-    ARTIFACT_ROOT = "mlruns/artifacts"
+    ARTIFACT_ROOT = "artifacts"
     if not os.path.exists(ARTIFACT_ROOT):
         os.makedirs(ARTIFACT_ROOT)
     
