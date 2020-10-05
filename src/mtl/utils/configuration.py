@@ -1,7 +1,6 @@
 import torch
 import yaml
 import importlib
-import ast
 
 # from mtl.datasets import *
 import mtl.datasets as datasets
@@ -142,6 +141,10 @@ def setup_loss(loss_cfg):
 
     return loss_func
 
+#TODO: setup head fo return a single or an array of heads
+def setup_head(head_cfg):
+    pass
+
 def load_config(config_file):
 
     default_config = {
@@ -157,19 +160,21 @@ def load_config(config_file):
 def verify_config(config):
     cfg = load_config(config)
 
-    required_keys = ['dataset', 'model', 'training', 'head', 'tokenizer', 'loss', 'optimizer']
+    required_keys = ['dataset', 'model', 'training', 'head', 'tokenizer', 'optimizer']
     if any(key not in cfg for key in required_keys):
         raise Exception(f"Missing key in configuration file. Required keys are: {required_keys}")
     
     # training:
     training_keys = ['epoch', 'batch_size']
+    training_type = cfg['training']['type']
     if any(key not in cfg['training'] for key in training_keys):
         raise Exception(f"Missing key in training part. Required keys are: {required_keys}")
 
     # Head:
-    head_args = list(cfg['head'].values())[0]
-    if head_args['count']<1:
-        raise Exception("Number of heads should at least be one.")
+    if training_type == "multihead_cls":
+        head_args = list(cfg['head'].values())[0]
+        if head_args['count']<1:
+            raise Exception("Number of heads should at least be one.")
 
     # the len of head_index should be the same as count
     # print("____")
@@ -179,15 +184,16 @@ def verify_config(config):
             raise Exception("In multi-head configuration, the count and length of head_index should match!")
 
     # if loss config is weightedloss, then its len should match with the head count 
-    loss_args = cfg['loss']
-    if loss_args['type'] == "weightedloss":
-        if len(loss_args['weights']) != int(head_args['count']):
-            raise Exception("In multi-head configuration, the head count and length of weights should match!")
+    if training_type == "multihead_cls":
+        loss_args = cfg['loss']
+        if loss_args['type'] == "weightedloss":
+            if len(loss_args['weights']) != int(head_args['count']):
+                raise Exception("In multi-head configuration, the head count and length of weights should match!")
     
-    # check if the sum of all weights will be 1:
-    if loss_args['type'] == "weightedloss":
-        if sum(ast.literal_eval(loss_args['weights'])) != 1:
-            raise Exception("The sum of loss weights should be 1!")
+        # check if the sum of all weights will be 1:
+        if loss_args['type'] == "weightedloss":
+            if sum(loss_args['weights']) != 1:
+                raise Exception(f"The sum of loss weights should be 1 while it is: {sum(loss_args['weights'])}!")
 
     return cfg
 
@@ -197,3 +203,8 @@ def setup_mlflow(mlflow_cfg):
     tracking_uri = mlflow_cfg['tracking_uri']
     mlflowLogger.setup_mlflow(experiment_name, tracking_uri, run_name)
     print("[  setup mlflow ] mlflow successfuly set up!")
+
+def log_training_args(training_args):
+    #-------log loss type and args to mlflow
+    for arg in training_args:
+        mlflowLogger.store_param("training."+arg , training_args[arg])
