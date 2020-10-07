@@ -3,7 +3,7 @@ import ast
 from transformers import BertTokenizer, BertForSequenceClassification
 import torch
 import numpy as np
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+
 from transformers import AdamW
 from tqdm import tqdm, trange
 import click
