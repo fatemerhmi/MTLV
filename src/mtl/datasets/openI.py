@@ -9,19 +9,15 @@ import numpy as np
 from collections import Counter, OrderedDict
 from itertools import islice
 from prettytable import PrettyTable
-from copy import deepcopy
-from skmultilearn.model_selection import IterativeStratification
 import torch
 import io
 import ast
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
-
-import logging
 from mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_reader
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
-
+from mtl.dataset.utils import iterative_train_test_split, create_dataLoader
 """
     You can manually donwload the OpenIdataset and put it in the data directory in root. 
     Description of the dataset: https://openi.nlm.nih.gov/faq
@@ -30,14 +26,9 @@ import mtl.utils.logger as mlflowLogger
     If it's not not already in the data/OpenI directory, we will download it for you
 """
 
-def create_dataLoader(input, labels, batch_size):
-    data = TensorDataset(input.input_ids, input.attention_mask, labels)
-    sampler = SequentialSampler(data)
-    dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
-    return dataloader
 
 def getfilename(xml_file):
-    x = re.search("[ \w-]+?(?=\.)", xml_file)
+    x = re.search(r"[ \w-]+?(?=\.)", xml_file)
     return x.group()
 
 def get_report(xml_file):
@@ -110,15 +101,16 @@ def plot_Barchart_top_n_labels(n, openI_df):
     sliced_o = OrderedDict(sliced)
 
     df = pd.DataFrame.from_dict(sliced_o, orient='index')
-#     df.plot(kind='bar', title = "Top "+str(n)+" ranked expert labels")
+    # df.plot(kind='bar', title = "Top "+str(n)+" ranked expert labels")
     return unique_labels
+
 def find_similar_disorders_caseInsensitive(disorder,unique_labels):
     similar_disorders = []
     for label in unique_labels:
         match = re.search(".*"+disorder+".*", label, flags = re.IGNORECASE)
         if match is not None:
             similar_disorders.append(match.group())
-#             print(match.group())
+            # print(match.group())
     return similar_disorders
 
 def find_similar_disorders_caseSensitive(disorder,unique_labels):
@@ -127,18 +119,18 @@ def find_similar_disorders_caseSensitive(disorder,unique_labels):
         match = re.search(".*"+disorder+".*", label)
         if match is not None:
             similar_disorders.append(match.group())
-#             print(match.group())
+            # print(match.group())
     return similar_disorders
 
 def update_row(row,similar_disorders,disorder):
-#     print("Before:", row)
+    # print("Before:", row)
     new_label_list = []
     for item in row:
         if item in similar_disorders:
             new_label_list.append(disorder)
         else:
             new_label_list.append(item)
-#     print("After:",new_label_list)
+    # print("After:",new_label_list)
     return new_label_list
 
 def update_labels(similar_disorders, disorder, openI_df):
@@ -154,12 +146,6 @@ def create_new_column(column_name, openI_df):
                                            else 0, \
                                            axis=1)
     return openI_df
-
-def iterative_train_test_split(X, y, test_size):
-    stratifier = IterativeStratification(n_splits=2, order=2, sample_distribution_per_fold=[test_size, 1.0-test_size])
-    train_indexes, test_indexes = next(stratifier.split(X, y))
-
-    return train_indexes, test_indexes
 
 def concat_cols(impression, findings):
     if impression is np.nan:
@@ -284,8 +270,13 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     df_cls.drop_duplicates('text', inplace=True)
 
     print('Unique texts: ', df_cls.text.nunique() == df_cls.shape[0])
+
+    #-------remove XXXX in text
+    df_cls['text'] = df_cls.apply(lambda row: row.text.replace("XXXX", ""), axis=1)
+
     #-------shuffle
     df_cls = df_cls.sample(frac=1).reset_index(drop=True)
+    mlflowLogger.store_param("dataset.len", len(df_cls))
 
     #-------stratified sampling
     train_indexes, test_indexes = iterative_train_test_split(df_cls['text'], np.array(df_cls['labels'].to_list()), 0.2)
@@ -303,8 +294,11 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     val_df.reset_index(drop=True, inplace=True)
 
     print('Train: ', len(train_df))
+    mlflowLogger.store_param("dataset.train.len", len(train_df))
     print('Test: ', len(test_df))
+    mlflowLogger.store_param("dataset.test.len", len(test_df))
     print('Val: ', len(val_df))
+    mlflowLogger.store_param("dataset.val.len", len(val_df))
 
     #-------table for tran, test,val counts
     label_counts_total = np.array(df_cls.labels.to_list()).sum(axis=0)

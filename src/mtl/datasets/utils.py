@@ -8,15 +8,12 @@ import requests
 import csv
 from tqdm import tqdm
 import os
-import logging
 import re
 import sys
 import zipfile
 import gzip
-
-
-
-
+from skmultilearn.model_selection import IterativeStratification
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
 #------from torch text-----------
 def download_from_url(url, path=None, root='.data', overwrite=False, hash_value=None,
@@ -204,3 +201,15 @@ def unicode_csv_reader(unicode_csv_data, **kwargs):
 
     for line in csv.reader(unicode_csv_data, **kwargs):
         yield line
+
+def iterative_train_test_split(X, y, test_size):
+    stratifier = IterativeStratification(n_splits=2, order=2, sample_distribution_per_fold=[test_size, 1.0-test_size])
+    train_indexes, test_indexes = next(stratifier.split(X, y))
+
+    return train_indexes, test_indexes
+
+def create_dataLoader(input, labels, batch_size):
+    data = TensorDataset(input.input_ids, input.attention_mask, labels)
+    sampler = SequentialSampler(data)
+    dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
+    return dataloader
