@@ -4,3 +4,4 @@ ipdb
 tqdm
 pyunpack
 scikit-multilearn
+nltk
