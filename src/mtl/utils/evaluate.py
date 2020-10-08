@@ -4,24 +4,36 @@ import numpy as np
 __all__ = ["calculate_f1_acc", "calculate_f1_acc_test"]
 
 def calculate_f1_acc(pred_labels, true_labels, threshold = 0.50):
-    pred_bools = [pl>threshold for pl in pred_labels]
-    true_bools = [tl==1 for tl in true_labels]
-    f1 = f1_score(true_bools,pred_bools,average='micro')*100
-    acc = accuracy_score(true_bools, pred_bools)*100
-    LRAP = label_ranking_average_precision_score(true_labels, pred_labels)
-    return f1, acc, LRAP
+    # pred_bools = [pl>threshold for pl in pred_labels]
+    # true_bools = [tl==1 for tl in true_labels]
+
+    target = true_labels
+    pred = np.array(pred_labels) >= 0.5
+
+    f1_micro = f1_score(target,pred,average='micro')*100
+    f1_macro = f1_score(target,pred,average='macro')*100
+    acc = accuracy_score(target, pred)*100
+    LRAP = label_ranking_average_precision_score(target, pred_labels)
+    return f1_micro, f1_macro, acc, LRAP
 
 def calculate_f1_acc_test(pred_labels, true_labels, test_label_cols, threshold = 0.50):
-    pred_bools = [pl>threshold for pl in pred_labels]
-    true_bools = [tl==1 for tl in true_labels] 
-    # print("-----------test-----------")
-    # print("Threshold: 0.5")
-    f1 = f1_score(true_bools, pred_bools,average='micro')*100
-    acc = accuracy_score(true_bools, pred_bools)
-    LRAP = label_ranking_average_precision_score(true_labels, pred_labels) 
-    clf_report = classification_report(true_bools,pred_bools,target_names=test_label_cols)
-    # print(clf_report)
-    return f1, acc, LRAP, clf_report
+    # pred_bools = [pl>threshold for pl in pred_labels]
+    # true_bools = [tl==1 for tl in true_labels] 
+    target = true_labels
+    pred = np.array(pred_labels) >= 0.5
+
+    # f1 = f1_score(true_bools, pred_bools,average='micro')*100
+    # acc = accuracy_score(true_bools, pred_bools)*100
+    # LRAP = label_ranking_average_precision_score(true_labels, pred_labels) 
+    # clf_report = classification_report(true_bools,pred_bools,target_names=test_label_cols)
+    
+    f1_micro = f1_score(target,pred,average='micro')*100
+    f1_macro = f1_score(target,pred,average='macro')*100
+    acc = accuracy_score(target, pred)*100
+    LRAP = label_ranking_average_precision_score(target, pred_labels)
+    clf_report = classification_report(target,pred,target_names=test_label_cols)
+
+    return f1_micro, f1_macro, acc, LRAP, clf_report
 
 def calculate_f1_acc_test_opt(pred_labels, true_labels, test_label_cols, threshold = 0.50):
     # Calculate Accuracy - maximize F1 accuracy by tuning threshold values. First with 'macro_thresholds' on the order of e^-1 then with 'micro_thresholds' on the order of e^-2
