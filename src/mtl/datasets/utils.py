@@ -213,3 +213,10 @@ def create_dataLoader(input, labels, batch_size):
     sampler = SequentialSampler(data)
     dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
     return dataloader
+
+def create_new_column(df, column_name):
+    df[column_name] = df.apply(lambda row: \
+                                        1 if column_name in row['labels'] \
+                                        else 0, \
+                                        axis=1)
+    return df
