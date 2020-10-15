@@ -26,15 +26,15 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
     epoch = training_args['epoch']
 
     #-------training type:
-    if training_type == "multihead_cls": #TODO
+    if training_type == "MTL_cls": #TODO
         cfg_loss = cfg['loss'] # TODO
         print(f"[  training  ] The training type is: Multi-head classification.")
-        multihead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
+        mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
     elif training_type == "singlehead_cls":
         singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
     return
 
-def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss):
+def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss):
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
     heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
@@ -70,65 +70,57 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
     # classification_head = HeadMultilabelCLS(hparams)
 
     #-------FineTune model
-    # trange is a tqdm wrapper around the normal python range
     for e in trange(epoch, desc="Epoch"):
         print("epoch", e)
         #==========Training======================
-        # Set our model to training mode (as opposed to evaluation mode)
         model.train()
 
-        # Tracking variables
-        tr_loss = 0 #running loss
-        train_headloss = np.zeros(3)
-        nb_tr_examples, nb_tr_steps = 0, 0
+        tr_loss = 0 #MTL loss
+        train_headloss = np.zeros(nheads) # head losses
+        nb_tr_steps =  0
 
         # Train the data for one epoch
         for step, batch in enumerate(train_dataloader):
-            # Add batch to GPU
             batch = tuple(t.to(device) for t in batch)
-            
-            # Unpack the inputs from our dataloader
             b_input_ids, b_input_mask, b_labels = batch
 
-            # Clear out the gradients (by default they accumulate)
             optimizer.zero_grad()
 
-            #Forward pass for multihead
-            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
-            head_losses = []
-            for i in range(0,nheads):
+            #Forward pass for MTL
+            # outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
+            # head_losses = []
+            # for i in range(0,nheads):
                 
-                #remove -1 paddings:
-                labels = b_labels[:,i,:]
-                labels = labels[:,0:head_count[i]]
+            #     #remove -1 paddings:
+            #     labels = b_labels[:,i,:]
+            #     labels = labels[:,0:head_count[i]]
                 
-                hparams={
-                    'labels' : labels,
-                    'num_labels' : len(heads_index[i]),
-                    'input_size' : outputs[0].size()[0],
-                    'inputLayer' : outputs,
-                    'device'     : device,
-                }
-                head_losses.append(HeadMultilabelCLS(hparams).loss)
+            #     hparams={
+            #         'labels' : labels,
+            #         'num_labels' : len(heads_index[i]),
+            #         'input_size' : outputs[0].size()[0],
+            #         'inputLayer' : outputs,
+            #         'device'     : device,
+            #     }
+            #     head_losses.append(HeadMultilabelCLS(hparams).loss)
             
             #--------head loss
-            train_headloss = np.sum([train_headloss, head_losses], axis=0)
+            train_headloss = np.sum([train_headloss, outputs.loss], axis=0)
 
             #------total loss and backprop
             if 'weights' in cfg_loss:
-                loss = loss_func(head_losses, cfg_loss['weights'])
+                loss = loss_func(outputs.loss, cfg_loss['weights'])
             else:
-                loss = loss_func(head_losses)
-            # Backward pass
+                loss = loss_func(outputs.loss)
+            #--------- Backward pass
             loss.backward()
             
-            # Update parameters and take a step using the computed gradient
             optimizer.step()
             # scheduler.step()
             
-            # Update tracking variables
             tr_loss += loss.item()
-            nb_tr_examples += b_input_ids.size(0)
+            # nb_tr_examples += b_input_ids.size(0)
             nb_tr_steps += 1
         train_headloss = train_headloss/nb_tr_steps
         index = 0
@@ -152,26 +144,30 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
             # Unpack the inputs from our dataloader
             b_input_ids, b_input_mask, b_labels = batch
             with torch.no_grad():
-                outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+                # outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
 
                 pred_label_heads = []
                 true_label_heads = []
+                outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
                 for i in range(0,nheads):
                     #remove -1 paddings:
                     labels = b_labels[:,i,:]
                     labels = labels[:,0:head_count[i]]
 
-                    hparams={
-                        'labels' : labels,
-                        'num_labels' : len(heads_index[i]),
-                        'input_size' : outputs[0].size()[0],
-                        'inputLayer' : outputs,
-                        'device'     : device,
-                    }
-                    pred_label_heads.append(HeadMultilabelCLS(hparams).pred_label)
                     true_label_heads.append(labels)
+                    pred = torch.sigmoid(outputs.logits[i])
+                    pred_label_heads.append(pred)
+                #     hparams={
+                #         'labels' : labels,
+                #         'num_labels' : len(heads_index[i]),
+                #         'input_size' : outputs[0].size()[0],
+                #         'inputLayer' : outputs,
+                #         'device'     : device,
+                #     }
+                #     pred_label_heads.append(HeadMultilabelCLS(hparams).pred_label)
+                # y_pred.sigmoid()
                 
-                #store batch labels 
+                # store batch labels 
                 pred_label_b = np.array(pred_label_heads)
                 true_labels_b = np.array(true_label_heads)
 
@@ -189,10 +185,11 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
 
         true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
         pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
-        val_f1, val_acc, _ = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
+        val_f1_micro, val_f1_macro, val_acc, _ = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
 
+        mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e)
+        mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e)
         mlflowLogger.store_metric("validation.acc", val_acc, e)
-        mlflowLogger.store_metric("validation.f1", val_f1, e)
 
         true_labels_each_head = np.array(true_labels_each_head)
         pred_labels_each_head = np.array(pred_labels_each_head)
@@ -205,9 +202,10 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
             i_head_pred_labels = pred_labels_each_head[:,i]
             i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
-            val_head_f1, val_head_acc, _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
+            val_head_f1_micro, val_head_f1_macro, val_head_acc, _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
             mlflowLogger.store_metric(f"validation.headacc.{i}", val_head_acc, e)
-            mlflowLogger.store_metric(f"validation.headf1.{i}", val_head_f1, e)
+            mlflowLogger.store_metric(f"validation.headf1_micro.{i}", val_head_f1_micro, e)
+            mlflowLogger.store_metric(f"validation.headf1_macro.{i}", val_head_f1_macro, e)
 
     #============test=============
     # Put model in evaluation mode to evaluate loss on the validation set
@@ -222,24 +220,27 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
         # Unpack the inputs from our dataloader
         b_input_ids, b_input_mask, b_labels = batch
         with torch.no_grad():
-            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
-
             pred_label_heads = []
             true_label_heads = []
+            
+            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
             for i in range(0,nheads):
                 #remove -1 paddings:
                 labels = b_labels[:,i,:]
                 labels = labels[:,0:head_count[i]]
 
-                hparams={
-                    'labels' : labels,
-                    'num_labels' : len(heads_index[i]),
-                    'input_size' : outputs[0].size()[0],
-                    'inputLayer' : outputs,
-                    'device'     : device,
-                }
-                pred_label_heads.append(HeadMultilabelCLS(hparams).pred_label)
                 true_label_heads.append(labels)
+                pred = torch.sigmoid(outputs.logits[i])
+                pred_label_heads.append(pred)
+                # hparams={
+                #     'labels' : labels,
+                #     'num_labels' : len(heads_index[i]),
+                #     'input_size' : outputs[0].size()[0],
+                #     'inputLayer' : outputs,
+                #     'device'     : device,
+                # }
+                # pred_label_heads.append(HeadMultilabelCLS(hparams).pred_label)
+                # true_label_heads.append(labels)
 
             #store batch labels 
             pred_label_b = np.array(pred_label_heads)
@@ -279,8 +280,9 @@ def multihead_cls(train_dataloader, validation_dataloader, test_dataloader, mode
         i_head_pred_labels = pred_labels_each_head[:,i]
         i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
-        testhead_f1, testhead_acc, testhead_LRAP = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
-        mlflowLogger.store_metric(f"test.headf1.{i}", testhead_f1, e)
+        testhead_f1_micro, testhead_f1_macro, testhead_acc, testhead_LRAP = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
+        mlflowLogger.store_metric(f"test.headf1_micro.{i}", testhead_f1_micro, e)
+        mlflowLogger.store_metric(f"test.headf1_macro.{i}", testhead_f1_macro, e)
         mlflowLogger.store_metric(f"test.headacc.{i}", testhead_acc, e)
         mlflowLogger.store_metric(f"test.headLRAP.{i}", testhead_LRAP, e)
 
