@@ -37,9 +37,11 @@ def run(config, gpu_id=0):
         use_cuda = torch.cuda.is_available()
         if use_cuda == False:
             print("[  use_cuda  ] No GPU available in your machine, will be using CPU")
+            device = 'cpu'
         if use_cuda == True:
             device_name = torch.cuda.get_device_name(gpu_id)
             print(f"[  use_cuda  ]  will be using: {device_name}")
+            device = 'cuda'
             torch.cuda.set_device(gpu_id)
     else:
         use_cuda = False
@@ -51,17 +53,27 @@ def run(config, gpu_id=0):
     #-------Setup datasets
     #if datasplit is true dataset that has only train, test; we will split the train to train and valid
     # if datasplit false, dataset has train, val, test itself.
-    train_dataloader, val_dataloader, test_dataloader = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], batch_size)
+    train_dataloader, val_dataloader, test_dataloader, num_labels = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], batch_size)
 
     #-------Setup Head
     #TODO: mighe need it for MTL
 
     #-------setup model
     # Load model, the pretrained model will include a single linear classification layer on top for classification. 
-    model = configuration.setup_model(cfg['model'])
+    training_type = cfg['training']['type']
+    if training_type == "singlehead_cls":
+        model = configuration.setup_model(cfg['model'])(num_labels, training_type)
+    if training_type == "MTL_cls":
+        num_labels = [len(labels) for labels in list(cfg['head'].values())[0]['heads_index']]
+        model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
+
+    freeze = list(cfg['model'].values())[0]['freeze']
+    if freeze:
+        # model.freeze_bert_encoder()
+        for param in model.base_model.parameters():
+            param.requires_grad = False
 
     #-------start training
-
     train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda)
 
 if __name__ == "__main__":
