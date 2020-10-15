@@ -26,7 +26,7 @@ def setup_model(model_cfg):
     #-------get the model obj
     model_name = model_args['model_name'].replace("-", "_")
     if model_name in imported_model_module.__all__:
-        model_obj = getattr(imported_model_module,model_name)()
+        model_fun = getattr(imported_model_module,model_name)
         # print(tokenizer_obj)
     else:
         available_model_type_list = str(imported_model_module.__all__).replace("_", "-")
@@ -37,7 +37,7 @@ def setup_model(model_cfg):
     for arg in model_args:
         mlflowLogger.store_param("model."+model_family+"."+arg , model_args[arg])
 
-    return model_obj
+    return model_fun
 
 def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
 
@@ -92,9 +92,9 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, batch_size):
     else:
         raise NameError(f'{dataset_name} does not appear in this lists of datasets we support: {available_datsets}')
 
-    train_dataloader, val_dataloader, test_dataloader = getattr(imported_dataset_module, "_setup_datasets")(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size)
+    train_dataloader, val_dataloader, test_dataloader, num_labels = getattr(imported_dataset_module, "_setup_datasets")(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size)
 
-    return train_dataloader, val_dataloader, test_dataloader
+    return train_dataloader, val_dataloader, test_dataloader, num_labels
 
 def setup_optimizer(optimizer_cfg, model_parameters):
     #-------optimizer name and args:
