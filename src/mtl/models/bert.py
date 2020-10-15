@@ -123,9 +123,11 @@ class BertCLS_multilabel_singleHead(BertPreTrainedModel):
     #         param.requires_grad = True
 
 class BertCLS_multilabel_MTL(BertPreTrainedModel):
-    def __init__(self, config):
+    def __init__(self, config, num_labels2):
         super().__init__(config)
-        self.num_labels = config.num_labels
+        self.num_labels_list = num_labels2[0]
+        self.device1 = num_labels2[1]
+
         self.hidden_size_BertCLS = config.hidden_size
 
         self.bert = BertModel(config)
@@ -134,8 +136,8 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
         # nn.init.xavier_normal_(self.classifier.weight)
         self.init_weights()
 
-        self.nhead = config.nhead # number of heads
-        self.classifiers = [nn.Linear(config.hidden_size, config.num_labels) for x in range(self.nhead)]
+        self.nhead = len(self.num_labels_list) # number of heads
+        self.classifiers = [nn.Linear(config.hidden_size, num_labels).to(self.device1) for num_labels in self.num_labels_list]
 
     def forward(
         self,
@@ -179,10 +181,17 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
 
         loss = None
         loss_func = BCEWithLogitsLoss()
-        losses = [loss_func(logits.view(-1, self.num_labels), labels.type_as(logits).view(-1, self.num_labels)) for logits in logits_heads]
-        # loss += []
+        # fix the labels here
+        # losses = [loss_func(logits.view(-1, self.num_labels), labels.type_as(logits).view(-1, self.num_labels)) for logits, num_labels in zip(logits_heads, self.num_labels_list, )]
         # loss = loss_func(logits.view(-1, self.num_labels), labels.type_as(logits).view(-1, self.num_labels))
-        
+        losses = []
+        for i, logits, num_labels in zip(range(0,self.nhead), logits_heads, self.num_labels_list):
+            #remove -1 paddings:
+            head_labels = labels[:,i,:]
+            head_labels = head_labels[:,0:self.num_labels_list[i]]
+
+            loss = loss_func(logits.view(-1, num_labels), head_labels.type_as(logits).view(-1, num_labels))
+            losses.append(loss)
 
         if not return_dict:
             output = (logits,) + outputs[2:]
@@ -195,19 +204,16 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
             attentions=outputs.attentions,
         )
 
-def bert_base_uncased(num_labels, training_type, nhead = None):
+def bert_base_uncased(num_labels, training_type, device='gpu'):
     if training_type == "singlehead_cls":
         # model =  BertCLS.from_pretrained('bert-base-uncased')
         model =  BertCLS_multilabel_singleHead.from_pretrained('bert-base-uncased', num_labels = num_labels, return_dict=True)
         model.embedding_size = model.hidden_size_BertCLS
         return model
     elif training_type == "MTL_cls":
-        if nhead is None:
-            raise Exception("number of heads 'nhead' must be more than 1!")
-        else:
-            model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-uncased', num_labels = num_labels, nhead = nhead, return_dict=True)
-            model.embedding_size = model.hidden_size_BertCLS
-            return model
+        model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-uncased', num_labels2 = [num_labels, device], return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+        return model
 
 def bert_large_uncased():
     model = BertCLS.from_pretrained('bert-base-uncased')
