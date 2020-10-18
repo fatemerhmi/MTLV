@@ -27,7 +27,7 @@ def get_params(key):
 def finish_mlflowrun():
     mlflow.end_run()
 
-def store_artifact(txt):
+def store_artifact(txt, name, format):
     #1. make artifacts directory in mlrun
     ARTIFACT_ROOT = "artifacts"
     if not os.path.exists(ARTIFACT_ROOT):
@@ -35,7 +35,7 @@ def store_artifact(txt):
     
     #2. store the report as .txt file in it
     now = datetime.now()
-    FILE_NAME = str(now)+'.txt'
+    FILE_NAME = name + str(now)+'.' + format
     file = open(ARTIFACT_ROOT + '/' + FILE_NAME, 'w')
     file.write(txt)
     file.close()
@@ -43,5 +43,13 @@ def store_artifact(txt):
     #3. store the artifact in mlflow
     mlflow.log_artifact(ARTIFACT_ROOT + '/' + FILE_NAME)
     
-    
+def store_pic(fig, name, format):
+    ARTIFACT_ROOT = "artifacts"
+    if not os.path.exists(ARTIFACT_ROOT):
+        os.makedirs(ARTIFACT_ROOT)
 
+    now = datetime.now()
+    FILE_NAME = name + str(now) + "."+ format
+    fig.savefig(ARTIFACT_ROOT + '/' + FILE_NAME, dpi=100)
+
+    mlflow.log_artifact(ARTIFACT_ROOT + '/' + FILE_NAME)
