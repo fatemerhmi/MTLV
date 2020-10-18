@@ -1,5 +1,5 @@
 
-__all__ = ['sumloss', 'avgloss', 'weightedloss']
+__all__ = ['sumloss', 'avgloss', 'weightedavg', 'weightedsum']
 
 #-------sum loss function
 def sumloss(head_losses):
@@ -18,12 +18,19 @@ def avgloss(head_losses):
 
 #-------weighted loss avg function
 # len of wieght loss should be the same as head count 
-def weightedloss(head_losses, weights):
+def weightedavg(head_losses, weights):
     loss = 0
     for head, weight in zip(head_losses, weights):
         loss += head*weight
     count = len(head_losses)
     return loss/count
 
-#-------
-# def 
+
+#-------weighted loss sum function
+# len of wieght loss should be the same as head count 
+def weightedsum(head_losses, weights):
+    loss = 0
+    for head, weight in zip(head_losses, weights):
+        loss += head*weight
+    return loss
+
