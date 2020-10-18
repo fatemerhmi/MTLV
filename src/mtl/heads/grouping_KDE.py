@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib
 from numpy import array, linspace
 import numpy as np
 from sklearn.neighbors import KernelDensity
@@ -7,7 +8,9 @@ from scipy.signal import argrelextrema
 from scipy.stats import scoreatpercentile
 from sklearn.model_selection import GridSearchCV, LeaveOneOut
 
-__all__ = [KDE, bandwidths_grid_search, bandwidth_silverman]
+import mtl.utils.logger as mlflowLogger 
+
+__all__ = ["KDE", "bandwidths_grid_search", "bandwidth_silverman"]
 
 def bandwidth_silverman(x):
     #Bandwidth estimated by Silverman's Rule of Thumb
@@ -74,7 +77,9 @@ def KDE(x,b):
     plt.plot(s,e,
             s[mi], e[mi], 'ro')
 
-    fig.savefig(f'KDE_b{b}.png', dpi=100)
+    # fig.savefig(f'KDE_b{b}.png', dpi=100)
+    mlflowLogger.store_pic(fig, f'KDE_b{b}', 'png')
+
     groupings = []
     head_index = []
     for i in range(len(mins)):
