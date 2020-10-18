@@ -71,7 +71,6 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
 
     #-------FineTune model
     for e in trange(epoch, desc="Epoch"):
-        print("epoch", e)
         #==========Training======================
         model.train()
 
@@ -87,23 +86,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
             optimizer.zero_grad()
 
             #Forward pass for MTL
-            # outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
             outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
-            # head_losses = []
-            # for i in range(0,nheads):
-                
-            #     #remove -1 paddings:
-            #     labels = b_labels[:,i,:]
-            #     labels = labels[:,0:head_count[i]]
-                
-            #     hparams={
-            #         'labels' : labels,
-            #         'num_labels' : len(heads_index[i]),
-            #         'input_size' : outputs[0].size()[0],
-            #         'inputLayer' : outputs,
-            #         'device'     : device,
-            #     }
-            #     head_losses.append(HeadMultilabelCLS(hparams).loss)
             
             #--------head loss
             train_headloss = np.sum([train_headloss, outputs.loss], axis=0)
@@ -138,14 +121,11 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         true_labels_each_head,pred_labels_each_head = [],[]
         true_labels_all_head,pred_labels_all_head = [],[]
         
-        # Predict
         for i, batch in enumerate(validation_dataloader):
             batch = tuple(t.to(device) for t in batch)
             # Unpack the inputs from our dataloader
             b_input_ids, b_input_mask, b_labels = batch
             with torch.no_grad():
-                # outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
-
                 pred_label_heads = []
                 true_label_heads = []
                 outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
@@ -157,16 +137,16 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
                     true_label_heads.append(labels)
                     pred = torch.sigmoid(outputs.logits[i])
                     pred_label_heads.append(pred)
-                #     hparams={
-                #         'labels' : labels,
-                #         'num_labels' : len(heads_index[i]),
-                #         'input_size' : outputs[0].size()[0],
-                #         'inputLayer' : outputs,
-                #         'device'     : device,
-                #     }
-                #     pred_label_heads.append(HeadMultilabelCLS(hparams).pred_label)
-                # y_pred.sigmoid()
                 
+                #------store validation loss
+                if 'weights' in cfg_loss:
+                    val_loss = loss_func(outputs.loss, cfg_loss['weights']).item()
+                else:
+                    val_loss = loss_func(outputs.loss).item()
+                mlflowLogger.store_metric("validation.loss", val_loss, e)
+                for head_indx, val_loss_head in enumerate(outputs.loss):
+                    mlflowLogger.store_metric(f"validation.loss.head{head_indx}", val_loss_head, e)
+
                 # store batch labels 
                 pred_label_b = np.array(pred_label_heads)
                 true_labels_b = np.array(true_label_heads)
@@ -232,15 +212,6 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
                 true_label_heads.append(labels)
                 pred = torch.sigmoid(outputs.logits[i])
                 pred_label_heads.append(pred)
-                # hparams={
-                #     'labels' : labels,
-                #     'num_labels' : len(heads_index[i]),
-                #     'input_size' : outputs[0].size()[0],
-                #     'inputLayer' : outputs,
-                #     'device'     : device,
-                # }
-                # pred_label_heads.append(HeadMultilabelCLS(hparams).pred_label)
-                # true_label_heads.append(labels)
 
             #store batch labels 
             pred_label_b = np.array(pred_label_heads)
@@ -261,13 +232,16 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
     pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
     
-    test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, col_names)
+
+    head_index_flatten = [i for head_index in heads_index for i in head_index]
+    new_col_names_order = [col_names[index] for index in head_index_flatten]
+    test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
     mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro, e)
     mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro, e)
     mlflowLogger.store_metric(f"test.acc", test_acc, e)
     mlflowLogger.store_metric(f"test.LRAP", test_LRAP, e)
-    mlflowLogger.store_param(f"test.report", str(test_clf_report))
-
+    # mlflowLogger.store_param(f"test.report", str(test_clf_report))
+    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt")
 
     true_labels_each_head = np.array(true_labels_each_head)
     pred_labels_each_head = np.array(pred_labels_each_head)
@@ -291,7 +265,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
 def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer):
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
+    # print("training", col_names)
     col_count = len(col_names)
+    # print("training", col_count)
 
     #-------load model
     if use_cuda:
@@ -307,7 +283,6 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
     #-------FineTune model
     # trange is a tqdm wrapper around the normal python range
     for e in trange(epoch, desc="Epoch"):
-        print("epoch", e)
         #==========Training======================
         # Set our model to training mode (as opposed to evaluation mode)
         model.train()
@@ -361,6 +336,11 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
             b_input_ids, b_input_mask, b_labels = batch
             with torch.no_grad():
                 outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)  
+
+                #----store validation loss
+                val_loss = outputs.loss.item()
+                mlflowLogger.store_metric("validation.loss", val_loss, e)
+
                 pred_label_b = torch.sigmoid(outputs.logits)
 
                 true_labels_signlehead.append(b_labels)
@@ -397,12 +377,11 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
     true_labels_signlehead = np.concatenate([item.to('cpu').numpy() for item in true_labels_signlehead])
     pred_labels_singlehead = np.concatenate([item.to('cpu').numpy() for item in pred_labels_singlehead])
 
-
     test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_singlehead, true_labels_signlehead, col_names)
     mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro)
     mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro)
     mlflowLogger.store_metric(f"test.acc", test_acc)
     mlflowLogger.store_metric(f"test.LRAP", test_LRAP)
-    mlflowLogger.store_artifact(test_clf_report)
+    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt")
 
     mlflowLogger.finish_mlflowrun()
