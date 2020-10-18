@@ -18,6 +18,9 @@ from mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_r
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
 from mtl.datasets.utils import iterative_train_test_split, create_dataLoader
+from mtl.heads.grouping_KDE import *
+from mtl.heads.grouping_meanshift import *
+
 """
     You can manually donwload the OpenIdataset and put it in the data directory in root. 
     Description of the dataset: https://openi.nlm.nih.gov/faq
@@ -25,7 +28,6 @@ from mtl.datasets.utils import iterative_train_test_split, create_dataLoader
 
     If it's not not already in the data/OpenI directory, we will download it for you
 """
-
 
 def getfilename(xml_file):
     x = re.search(r"[ \w-]+?(?=\.)", xml_file)
@@ -160,9 +162,19 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     DATA_DIR = dataset_args['root']
 
     if os.path.exists(f"{DATA_DIR}/OpenI"):
+        #---------load dataframe
         print("[  dataset  ] OpenI directory already exists")
-        openI_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}")
-        openI_df['expert_labels'] = openI_df.apply(lambda row: ast.literal_eval(row['expert_labels']), axis=1)
+        df_cls = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}")
+        # openI_df['expert_labels'] = openI_df.apply(lambda row: ast.literal_eval(row['expert_labels']), axis=1)
+        df_cls['labels'] = df_cls.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
+
+        #--------loading and storing labels to mlflow
+        labels = list(np.load(f"{DATA_DIR}/OpenI/labels.npy"))
+        num_labels = len(labels)
+        # print("dataset", labels)
+        # print("dataset", num_labels)
+        mlflowLogger.store_param("col_names", labels)
+        mlflowLogger.store_param("num_labels", num_labels)
     else:
         os.makedirs(f"{DATA_DIR}/OpenI")
         
@@ -179,100 +191,112 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
         openI_df = convert_xml2csv(allFiles)
         openI_df = openI_df.drop(['manual_labels'], axis=1)
         os.system(f"rm -r {DATA_DIR}/OpenI/ecgen-radiology") 
-        openI_df.to_csv(f'{DATA_DIR}/OpenI/openI.csv', index=False)
+        # openI_df.to_csv(f'{DATA_DIR}/OpenI/openI.csv', index=False)
     
-    #-------fine the labels acording to the previous citations-----------
-    paper1 = ['Atelectasis', 'Cardiomegaly', 'Effusion', 
-        'Infiltrate', 'Mass', 'Nodule', 
-        'Pneumonia', 'Pneumothorax']
+        #-------fine the labels acording to the previous citations-----------
+        paper1 = ['Atelectasis', 'Cardiomegaly', 'Effusion', 
+            'Infiltrate', 'Mass', 'Nodule', 
+            'Pneumonia', 'Pneumothorax']
 
-    paper2 = ['Pneumonia', 'Emphysema', 'Effusion', 'Consolidation', 
-            'Nodule', 'Atelectasis', 'Edema', 'Cardiomegaly', 'Hernia']
+        paper2 = ['Pneumonia', 'Emphysema', 'Effusion', 'Consolidation', 
+                'Nodule', 'Atelectasis', 'Edema', 'Cardiomegaly', 'Hernia']
 
-    paper3 = ['Atelectasis', 'Cardiomegaly', 'Effusion', 
-            'Infiltrate', 'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax', 
-            'Consolidation', 'Edema', 'Emphysema', 'Fibrosis']
+        paper3 = ['Atelectasis', 'Cardiomegaly', 'Effusion', 
+                'Infiltrate', 'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax', 
+                'Consolidation', 'Edema', 'Emphysema', 'Fibrosis']
 
-    paper4 = ['opacity', 'Cardiomegaly', 'Calcinosis', 'lung/hypoinflation',
-            'Calcified granuloma', 'thoracic vertebrae/degenerative', 'lung/hyperdistention', 
-            'spine/degenerative', 'catheters, indwelling', 'granulomatous disease', 
-            'nodule', 'surgical instrument']
+        paper4 = ['opacity', 'Cardiomegaly', 'Calcinosis', 'lung/hypoinflation',
+                'Calcified granuloma', 'thoracic vertebrae/degenerative', 'lung/hyperdistention', 
+                'spine/degenerative', 'catheters, indwelling', 'granulomatous disease', 
+                'nodule', 'surgical instrument']
 
-    added = ['Cicatrix', 'Deformity', "Medical Device", "Airspace Disease"]
+        added = ['Cicatrix', 'Deformity', "Medical Device", "Airspace Disease"]
 
-    labels = list(set().union(paper1, paper2, paper3, paper4, added))
-    labels.sort()
+        labels = list(set().union(paper1, paper2, paper3, paper4, added))
+        labels.sort()
 
-    unique_labels = plot_Barchart_top_n_labels(20, openI_df)
-    for label in labels: 
-        disorder = label
-        if disorder == "Pneumothorax":
-            similar_disorders = find_similar_disorders_caseSensitive(disorder, unique_labels)
-        else:
-            similar_disorders = find_similar_disorders_caseInsensitive(disorder, unique_labels)
-        if similar_disorders != []:
-            openI_df = update_labels(similar_disorders, disorder, openI_df)
-            openI_df =  create_new_column(label, openI_df)
-            unique_labels = plot_Barchart_top_n_labels(20, openI_df)
-        else:
-            print(label)
+        unique_labels = plot_Barchart_top_n_labels(20, openI_df)
+        for label in labels: 
+            disorder = label
+            if disorder == "Pneumothorax":
+                similar_disorders = find_similar_disorders_caseSensitive(disorder, unique_labels)
+            else:
+                similar_disorders = find_similar_disorders_caseInsensitive(disorder, unique_labels)
+            if similar_disorders != []:
+                openI_df = update_labels(similar_disorders, disorder, openI_df)
+                openI_df =  create_new_column(label, openI_df)
+                unique_labels = plot_Barchart_top_n_labels(20, openI_df)
+            else:
+                print(label)
 
-    #-------preprocess finding and impression
-    print('No. of rows with Finding:', len(openI_df[openI_df['FINDINGS'].notnull()]))
-    print('No. of rows with Impression:', len(openI_df[openI_df['IMPRESSION'].notnull()]))
-    print('No. of rows with Impression or Finding:', 
-        len(openI_df[openI_df['IMPRESSION'].notnull() | openI_df['FINDINGS'].notnull()]))
-    print('No. of rows without Impression and Finding:', 
-        len(openI_df[openI_df['IMPRESSION'].isna() & openI_df['FINDINGS'].isna()]))
+        #-------preprocess finding and impression
+        print('No. of rows with Finding:', len(openI_df[openI_df['FINDINGS'].notnull()]))
+        print('No. of rows with Impression:', len(openI_df[openI_df['IMPRESSION'].notnull()]))
+        print('No. of rows with Impression or Finding:', 
+            len(openI_df[openI_df['IMPRESSION'].notnull() | openI_df['FINDINGS'].notnull()]))
+        print('No. of rows without Impression and Finding:', 
+            len(openI_df[openI_df['IMPRESSION'].isna() & openI_df['FINDINGS'].isna()]))
 
-    idx = openI_df[openI_df['IMPRESSION'].isna() & openI_df['FINDINGS'].isna()].index
-    openI_df.drop(idx, inplace = True)
-    print('No. of rows without Impression and Finding:', 
-        len(openI_df[openI_df['IMPRESSION'].isna() & openI_df['FINDINGS'].isna()]))
+        idx = openI_df[openI_df['IMPRESSION'].isna() & openI_df['FINDINGS'].isna()].index
+        openI_df.drop(idx, inplace = True)
+        print('No. of rows without Impression and Finding:', 
+            len(openI_df[openI_df['IMPRESSION'].isna() & openI_df['FINDINGS'].isna()]))
 
-    #-------drop unnecessary columns
-    to_drop = []
-    for label in labels:
-        if openI_df[label].sum()<100:
-            to_drop.append(label)
+        #-------drop unnecessary columns
+        to_drop = []
+        for label in labels:
+            if openI_df[label].sum()<100:
+                to_drop.append(label)
 
-    openI_df.drop(['fileNo','expert_labels','COMPARISON','INDICATION' ]+ to_drop, inplace=True, axis=1)
+        openI_df.drop(['fileNo','expert_labels','COMPARISON','INDICATION' ]+ to_drop, inplace=True, axis=1)
 
-    #-------rename columns
-    openI_df.rename(columns={"lung/hyperdistention": "lung hyperdistention", \
-                   "lung/hypoinflation": "lung hypoinflation", \
-                    "spine/degenerative": "spine degenerative", \
-                    "thoracic vertebrae/degenerative": "thoracic vertebrae degenerative", \
-                    "catheters, indwelling":"indwelling catheters",
-                   }, inplace= True)
+        #-------rename columns
+        openI_df.rename(columns={"lung/hyperdistention": "lung hyperdistention", \
+                    "lung/hypoinflation": "lung hypoinflation", \
+                        "spine/degenerative": "spine degenerative", \
+                        "thoracic vertebrae/degenerative": "thoracic vertebrae degenerative", \
+                        "catheters, indwelling":"indwelling catheters",
+                    }, inplace= True)
 
-    #-------log how many labels + label cols
-    cols = openI_df.columns
-    labels = list(cols[2:])
-    num_labels = len(labels)
-    mlflowLogger.store_param("col_names", labels)
-    mlflowLogger.store_param("num_labels", num_labels)
-    # print('Count of 1 per label: \n', openI_df[labels].sum(), '\n') # Label counts, may need to downsample or upsample
+        #-------log how many labels + label cols
+        cols = openI_df.columns
+        labels = list(cols[2:])
+        num_labels = len(labels)
+        mlflowLogger.store_param("col_names", labels)
+        mlflowLogger.store_param("num_labels", num_labels)
+        # print('Count of 1 per label: \n', openI_df[labels].sum(), '\n') # Label counts, may need to downsample or upsample
+        print("openI",labels)
+        np.save(f"{DATA_DIR}/OpenI/labels.npy", list(labels))
+        num_labels = len(labels)
+        mlflowLogger.store_param("col_names", labels)
+        mlflowLogger.store_param("num_labels", num_labels)
 
-    #-------Converting the labels to a single list
-    df_cls = pd.DataFrame(columns = ['text', 'labels'])
+        #-------Converting the labels to a single list
+        df_cls = pd.DataFrame(columns = ['text', 'labels'])
 
-    #-------create the text column:
-    df_cls['text'] = openI_df.apply(lambda row: concat_cols(row['IMPRESSION'], row['FINDINGS']), axis=1)
-    df_cls['labels'] = openI_df.apply(lambda row: np.array(row[labels].to_list()), axis=1) #.to_list() , .values
+        #-------create the text column:
+        df_cls['text'] = openI_df.apply(lambda row: concat_cols(row['IMPRESSION'], row['FINDINGS']), axis=1)
+        df_cls['labels'] = openI_df.apply(lambda row: np.array(row[labels].to_list()), axis=1) #.to_list() , .values
 
-    print('Unique texts: ', df_cls.text.nunique() == df_cls.shape[0])
+        print('Unique texts: ', df_cls.text.nunique() == df_cls.shape[0])
 
-    print("Length of whole dataframe:", len(df_cls))
-    print("No. of unique reports:", df_cls.text.nunique())
+        print("Length of whole dataframe:", len(df_cls))
+        print("No. of unique reports:", df_cls.text.nunique())
 
-    #-------remove the duplicates
-    df_cls.drop_duplicates('text', inplace=True)
+        #-------remove the duplicates
+        df_cls.drop_duplicates('text', inplace=True)
 
-    print('Unique texts: ', df_cls.text.nunique() == df_cls.shape[0])
+        print('Unique texts: ', df_cls.text.nunique() == df_cls.shape[0])
 
-    #-------remove XXXX in text
-    df_cls['text'] = df_cls.apply(lambda row: row.text.replace("XXXX", ""), axis=1)
+        #-------remove XXXX in text
+        df_cls['text'] = df_cls.apply(lambda row: row.text.replace("XXXX", ""), axis=1)
+
+        #-------save the datafarme
+        df_cls_tosave = df_cls.copy()
+        df_cls_tosave['labels'] = df_cls_tosave.apply(lambda row: list(row["labels"]), axis=1)
+        df_cls_tosave.to_csv(f'{DATA_DIR}/OpenI/openI.csv', index=False)
+        del df_cls_tosave
+
 
     #-------shuffle
     df_cls = df_cls.sample(frac=1).reset_index(drop=True)
@@ -280,12 +304,10 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
 
     #-------stratified sampling
     train_indexes, test_indexes = iterative_train_test_split(df_cls['text'], np.array(df_cls['labels'].to_list()), 0.2)
-
     train_df = df_cls.iloc[train_indexes,:]
     test_df = df_cls.iloc[test_indexes,:]
 
     train_indexes, val_indexes = iterative_train_test_split(train_df['text'], np.array(train_df['labels'].to_list()), 0.15)
-
     train_df = df_cls.iloc[train_indexes,:]
     val_df = df_cls.iloc[val_indexes,:]
 
@@ -300,8 +322,9 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     print('Val: ', len(val_df))
     mlflowLogger.store_param("dataset.val.len", len(val_df))
 
-    #-------table for tran, test,val counts
+    #-------table for train, test,val counts
     label_counts_total = np.array(df_cls.labels.to_list()).sum(axis=0)
+    
     label_counts_train = np.array(train_df.labels.to_list()).sum(axis=0)
     label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
     label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
@@ -312,24 +335,16 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     for pathology, cnt_total, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_total, label_counts_train, label_counts_test, label_counts_val):
         pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
     print(pretty)
-
-    #-------read the data
-    # data_path =  f"{dataset_args['root']}/{dataset_args['data_path']}"        
-    # split_path = f"{dataset_args['root']}/{dataset_args['split_path']}"  
-
-    #-------convert string of list to actual list (labels)
-    # train_df = pd.read_csv(f"{split_path}/train.csv")
-    # train_df['labels'] = train_df.apply(lambda row: ast.literal_eval(row['labels']), axis=1)
-
-    # test_df = pd.read_csv(f"{split_path}/test.csv")
-    # test_df['labels'] = test_df.apply(lambda row: ast.literal_eval(row['labels']), axis=1)
-
-    # val_df = pd.read_csv(f"{split_path}/val.csv")
-    # val_df['labels'] = val_df.apply(lambda row: ast.literal_eval(row['labels']), axis=1)
     
     #-------check for multi-head, single or multi-task
     if head_type =="multi-task":
-        heads_index = head_args["heads_index"]
+        #check the type:   label_counts_total
+        if head_args['type'] == "givenset":
+            heads_index = head_args["heads_index"]
+        elif head_args['type'] == "KDE":
+            heads_index = KDE(label_counts_total, head_args['bandwidth'])
+        elif head_args['type'] == "meanshift":
+             heads_index = meanshift(label_counts_total)
         mlflowLogger.store_param("heads_index", heads_index)
         padded_heads = padding_heads(heads_index)
         
@@ -344,7 +359,6 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
         val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
 
     elif head_type =="single-head":
-
         #--prepare labels for dataloader
         train_labels = torch.from_numpy(np.array(train_df.labels.to_list()))
         test_labels = torch.from_numpy(np.array(test_df.labels.to_list()))
