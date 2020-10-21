@@ -5,3 +5,4 @@ tqdm
 pyunpack
 scikit-multilearn
 nltk
+scikit-learn-extra
