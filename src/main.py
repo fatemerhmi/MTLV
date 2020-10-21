@@ -13,6 +13,7 @@ from mtl.utils.evaluate import *
 from mtl.heads.utils import padding_heads, group_heads
 from mtl.heads.clsHeads import *
 import mtl.utils.configuration as configuration
+import mtl.utils.logger as mlflowLogger 
 from training import train
 
 @click.group()
@@ -64,7 +65,8 @@ def run(config, gpu_id=0):
     if training_type == "singlehead_cls":
         model = configuration.setup_model(cfg['model'])(num_labels, training_type)
     if training_type == "MTL_cls":
-        num_labels = [len(labels) for labels in list(cfg['head'].values())[0]['heads_index']]
+        heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
+        num_labels = [len(labels) for labels in heads_index]
         model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
 
     freeze = list(cfg['model'].values())[0]['freeze']
