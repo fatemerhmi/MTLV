@@ -145,7 +145,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
                     val_loss = loss_func(outputs.loss).item()
                 mlflowLogger.store_metric("validation.loss", val_loss, e)
                 for head_indx, val_loss_head in enumerate(outputs.loss):
-                    mlflowLogger.store_metric(f"validation.loss.head{head_indx}", val_loss_head, e)
+                    mlflowLogger.store_metric(f"validation.loss.head{head_indx}", val_loss_head.item(), e)
 
                 # store batch labels 
                 pred_label_b = np.array(pred_label_heads)
