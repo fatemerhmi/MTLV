@@ -1,14 +1,13 @@
 mlflow:
-  experiment_name: OpenI_experiments
-  run_name: MTL_kmediod-labeldesc4_wavgloss_e20
+  experiment_name: ohsumed_experiments
+  run_name:  MTL_kmediod-label_avgloss_e15
   tracking_uri: mlruns
 
 dataset: 
-  openI:
+  ohsumed:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
-    data_path: OpenI
-    # split_path: openI/cheXpertLabels
+    data_path: ohsumed
     use_data_loader: True
 
 model: 
@@ -18,16 +17,16 @@ model:
     
 training:
   type: MTL_cls
-  # type: singlehead_cls
-  epoch : 20
+  epoch : 15
   batch_size : 16
   use_cuda : True
+
 
 head: 
   multi-task:
     heads: MultiLabelCLS
-    type: kmediod-labeldesc  # givenset meanshift KDE kmediod-label, kmediod-labeldesc 
-    bandwidth: 20
+    type: kmediod-label  # givenset meanshift KDE kmediod-label
+    # bandwidth: 500
     elbow: 7
     clusters: 4
     # count: 4
@@ -46,10 +45,8 @@ optimizer:
     lr: 0.00002
 
 loss:
-  type: weightmean-loss  #avgloss sumloss weightmean-loss weightsigmoid-loss
+  type: avgloss  #avgloss sumloss
 
 # loss:
-#   type: weightedsum # weightedavg weightedsum 
-#   weights: [0.30, 0.30, 0.20, 0.20]
-#   weights: [0.56, 0.15, 0.19, 0.10]
-
+#   type: weightedsum # weightedavg weightedsum
+#   weights: [0.45, 0.2, 0.15, 0.2]

@@ -7,7 +7,7 @@ dataset:
   reuters:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
-    data_path: reuters/reuters_train.csv
+    data_path: reuters
     # split_path: openI/cheXpertLabels
     use_data_loader: True
 

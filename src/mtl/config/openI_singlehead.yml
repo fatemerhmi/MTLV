@@ -1,25 +1,24 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: signlehead_bert
+  run_name: signlehead_bert_e50
   tracking_uri: mlruns
 
 dataset: 
   openI:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
-    data_path: OpenI/openI.csv
+    data_path: OpenI
     # split_path: openI/cheXpertLabels
     use_data_loader: True
 
 model: 
   bert:
     model_name: bert-base-uncased
-    freeze: True
+    freeze: False
 
 training:
-  # type: multihead_cls
   type: singlehead_cls
-  epoch : 10
+  epoch : 50
   batch_size : 16
   use_cuda : True
 
@@ -27,12 +26,6 @@ head:
   single-head:
     heads: MultiLabelCLS
 
-# head: 
-#   single-head: # or multi-task 
-#   multi-head:
-#     # count: 3
-#     heads: MultiLabelCLS
-#     heads_index : [[0,1,2,3], [4,5,6], [7,8,9,10]]
 
 tokenizer:
   bert:
@@ -45,10 +38,3 @@ optimizer:
   adam:
     name: AdamW
     lr: 0.00002
-
-# loss:
-#   type: avgloss #sumloss #
-
-# loss:
-#   type: weightedloss
-#   weights: [0.3, 0.2, 0.5]
