@@ -13,6 +13,7 @@ import torch
 import io
 import ast
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+from transformers import BertModel
 
 from mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_reader
 from mtl.heads.utils import padding_heads, group_heads
@@ -20,6 +21,7 @@ import mtl.utils.logger as mlflowLogger
 from mtl.datasets.utils import iterative_train_test_split, create_dataLoader
 from mtl.heads.grouping_KDE import *
 from mtl.heads.grouping_meanshift import *
+from mtl.heads.grouping_kmediod import grouping_kmediod, get_all_label_embds, plot_elbow_method
 
 """
     You can manually donwload the OpenIdataset and put it in the data directory in root. 
@@ -164,15 +166,16 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     if os.path.exists(f"{DATA_DIR}/OpenI"):
         #---------load dataframe
         print("[  dataset  ] OpenI directory already exists")
-        df_cls = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}")
-        # openI_df['expert_labels'] = openI_df.apply(lambda row: ast.literal_eval(row['expert_labels']), axis=1)
-        df_cls['labels'] = df_cls.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
-
+        #--------load dataframe
+        train_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/openI_train.csv")
+        train_df['labels'] = train_df.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
+        
+        test_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/openI_test.csv")
+        test_df['labels'] = test_df.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
+        mlflowLogger.store_param("dataset.len", len(train_df)+len(test_df))
         #--------loading and storing labels to mlflow
         labels = list(np.load(f"{DATA_DIR}/OpenI/labels.npy"))
         num_labels = len(labels)
-        # print("dataset", labels)
-        # print("dataset", num_labels)
         mlflowLogger.store_param("col_names", labels)
         mlflowLogger.store_param("num_labels", num_labels)
     else:
@@ -208,7 +211,7 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
         paper4 = ['opacity', 'Cardiomegaly', 'Calcinosis', 'lung/hypoinflation',
                 'Calcified granuloma', 'thoracic vertebrae/degenerative', 'lung/hyperdistention', 
                 'spine/degenerative', 'catheters, indwelling', 'granulomatous disease', 
-                'nodule', 'surgical instrument']
+                'Nodule', 'surgical instrument']
 
         added = ['Cicatrix', 'Deformity', "Medical Device", "Airspace Disease"]
 
@@ -291,25 +294,34 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
         #-------remove XXXX in text
         df_cls['text'] = df_cls.apply(lambda row: row.text.replace("XXXX", ""), axis=1)
 
+        #-------shuffle
+        df_cls = df_cls.sample(frac=1).reset_index(drop=True)
+        mlflowLogger.store_param("dataset.len", len(df_cls))
+
+        #-------stratified sampling
+        train_indexes, test_indexes = iterative_train_test_split(df_cls['text'], np.array(df_cls['labels'].to_list()), 0.2)
+        train_df = df_cls.iloc[train_indexes,:]
+        test_df = df_cls.iloc[test_indexes,:]
+
         #-------save the datafarme
         df_cls_tosave = df_cls.copy()
         df_cls_tosave['labels'] = df_cls_tosave.apply(lambda row: list(row["labels"]), axis=1)
         df_cls_tosave.to_csv(f'{DATA_DIR}/OpenI/openI.csv', index=False)
         del df_cls_tosave
 
-
-    #-------shuffle
-    df_cls = df_cls.sample(frac=1).reset_index(drop=True)
-    mlflowLogger.store_param("dataset.len", len(df_cls))
-
-    #-------stratified sampling
-    train_indexes, test_indexes = iterative_train_test_split(df_cls['text'], np.array(df_cls['labels'].to_list()), 0.2)
-    train_df = df_cls.iloc[train_indexes,:]
-    test_df = df_cls.iloc[test_indexes,:]
+        train_df_tosave = train_df.copy()
+        train_df_tosave['labels'] = train_df_tosave.apply(lambda row: list(row["labels"]), axis=1)
+        train_df_tosave.to_csv(f'{DATA_DIR}/OpenI/openI_train.csv', index=False)
+        del train_df_tosave
+        
+        test_df_tosave = test_df.copy()
+        test_df_tosave['labels'] = test_df_tosave.apply(lambda row: list(row["labels"]), axis=1)
+        test_df_tosave.to_csv(f'{DATA_DIR}/OpenI/openI_test.csv', index=False)
+        del test_df_tosave
 
     train_indexes, val_indexes = iterative_train_test_split(train_df['text'], np.array(train_df['labels'].to_list()), 0.15)
-    train_df = df_cls.iloc[train_indexes,:]
-    val_df = df_cls.iloc[val_indexes,:]
+    val_df = train_df.iloc[val_indexes,:]
+    train_df = train_df.iloc[train_indexes,:]
 
     train_df.reset_index(drop=True, inplace=True)
     test_df.reset_index(drop=True, inplace=True)
@@ -323,16 +335,18 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     mlflowLogger.store_param("dataset.val.len", len(val_df))
 
     #-------table for train, test,val counts
-    label_counts_total = np.array(df_cls.labels.to_list()).sum(axis=0)
+    # label_counts_total = np.array(df_cls.labels.to_list()).sum(axis=0)
     
     label_counts_train = np.array(train_df.labels.to_list()).sum(axis=0)
     label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
     label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
 
-
     pretty=PrettyTable()
+    label_counts_total = []
     pretty.field_names = ['Pathology', 'total', 'train', 'test','val']
-    for pathology, cnt_total, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_total, label_counts_train, label_counts_test, label_counts_val):
+    for pathology, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_train, label_counts_test, label_counts_val):
+        cnt_total = cnt_train + cnt_test + cnt_val
+        label_counts_total.append(cnt_total)
         pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
     print(pretty)
     
@@ -341,10 +355,35 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
         #check the type:   label_counts_total
         if head_args['type'] == "givenset":
             heads_index = head_args["heads_index"]
+
         elif head_args['type'] == "KDE":
+            print("[  dataset  ] KDE label grouping starts!")
             heads_index = KDE(label_counts_total, head_args['bandwidth'])
+
         elif head_args['type'] == "meanshift":
-             heads_index = meanshift(label_counts_total)
+            print("[  dataset  ] meanshift label grouping starts!")
+            heads_index = meanshift(label_counts_total)
+
+        elif head_args['type'] == "kmediod-label":
+            print("[  dataset  ] kmediod-label grouping starts!")
+            model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+            embds = get_all_label_embds(labels, tokenizer, model)
+            if "elbow" in head_args.keys():
+                plot_elbow_method(embds,head_args['elbow'])
+            heads_index = grouping_kmediod(embds, head_args['clusters'])
+            del model
+
+        elif head_args['type'] == "kmediod-labeldesc":
+            print("[  dataset  ] kmediod-label description grouping starts!")
+            model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+            labels_list = [labels_dict[label] for label in labels]
+            # list(labels_dict.values()
+            embds = get_all_label_embds(labels_list, tokenizer, model)
+            if "elbow" in head_args.keys():
+                plot_elbow_method(embds,head_args['elbow'])
+            heads_index = grouping_kmediod(embds, head_args['clusters'])
+            del model
+
         mlflowLogger.store_param("heads_index", heads_index)
         padded_heads = padding_heads(heads_index)
         
@@ -381,3 +420,26 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     test_dataloader       = create_dataLoader(test, test_labels, batch_size)
 
     return train_dataloader, validation_dataloader, test_dataloader, num_labels
+
+
+labels_dict={
+    'Airspace Disease': "Airspace disease can be acute or chronic and commonly present as consolidation or ground-glass opacity on chest imaging. Consolidation or ground-glass opacity occurs when alveolar air is replaced by fluid, pus, blood, cells, or other material.", 
+    'Atelectasis': "Atelectasis is a condition in which the airways and air sacs in the lung collapse or do not expand properly. Atelectasis can happen when there is an airway blockage, when pressure outside the lung keeps it from expanding, or when there is not enough surfactant for the lung to expand normally.", 
+    'Calcified granuloma': "A calcified granuloma is a specific type of tissue inflammation that has become calcified over time. When something is referred to as “calcified,” it means that it contains deposits of the element calcium. Calcium has a tendency to collect in tissue that is healing.", 
+    'Calcinosis': "Calcinosis is a condition in which abnormal amounts of calcium salts are found in soft body tissue, such as muscle.", 
+    'Cardiomegaly': "An enlarged heart (cardiomegaly) isn't a disease, but rather a sign of another condition. The term cardiomegaly refers to an enlarged heart seen on any imaging test, including a chest X-ray.", 
+    'Cicatrix': "Cicatrix is new tissue that forms over a wound and later contracts into a scar. ", 
+    'Deformity': "Alteration in or distortion of the natural form of a part, organ, or the entire body. It may be acquired or congenital. If present after injury, deformity usually implies the presence of bone fracture, bone dislocation, or both.", 
+    'Effusion': "Effusion. Chest X-rays can detect pleural effusions, which often appear as white areas at the lung base. A pleural effusion is a buildup of fluid in the pleural space, an area between the layers of tissue that line the lungs and the chest wall. It may also be referred to as effusion or pulmonary effusion.", 
+    'Emphysema': "Emphysema is a lung condition that causes shortness of breath. In people with emphysema, the air sacs in the lungs (alveoli) are damaged.=", 
+    'Medical Device': "Medical Device in chest", 
+    'Nodule': "A nodule is a growth of abnormal tissue. Nodules can develop just below the skin. They can also develop in deeper skin tissues or internal organs.", 
+    'indwelling catheters': "indwelling catheters is permanently present flexible tube inserted through a narrow opening into a body cavity, particularly the bladder, for removing fluid.", 
+    'granulomatous disease': "A granuloma is a small area of inflammation. Granulomas are often found incidentally on an X-ray or other imaging test done for a different reason. Typically, granulomas are noncancerous (benign). Granulomas frequently occur in the lungs, but can occur in other parts of the body and head as well.", 
+    'lung hyperdistention': "Hyperinflated lungs occur when air gets trapped in the lungs and causes them to overinflate. Hyperinflated lungs can be caused by blockages in the air passages or by air sacs that are less elastic, which interferes with the expulsion of air from the lungs.", 
+    'lung hypoinflation': "lung hypoinflation can be caused by blockages in the air passages or by air sacs that are less elastic, which interferes with the expulsion of air from the lungs. ", 
+    'opacity': "opacity. Lung opacities are vague, fuzzy clouds of white in the darkness of the lungs, which makes detecting them a real challenge.", 
+    'spine degenerative': "spine degenerative. Degenerative changes in the spine are those that cause the loss of normal structure and/or function. They are not typically due to a specific injury but rather to age.", 
+    'surgical instrument': "A surgical instrument is a tool or device for performing specific actions or carrying out desired effects during a surgery or operation, such as modifying biological tissue, or to provide access for viewing it.", 
+    'thoracic vertebrae degenerative': "The thoracic spine is the area of your spine below your neck connected to your ribs. It is made up of 12 vertebral bodies with intervening discs. The disc is a cartilage, gristle like material that sits between your vertebral bodies in all parts of your spine. The disc acts like a cushion and also allows flexibility in your spine. The disc can wear over time as we age or earlier if it is injured. As it wears, or degenerates, the space between the vertebral bodies is reduced."
+}
