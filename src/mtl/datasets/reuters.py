@@ -22,14 +22,14 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     if os.path.exists(f"{DATA_DIR}/reuters"):
         #--------load dataframe
         print("[  dataset  ] reuters directory already exists.")
-        train_val_df = pd.read_csv(f"{DATA_DIR}/reuters/reuters_train.csv'")
-        train_val_df['labels'] = train_val_df.apply(lambda row: np.array((ast.literal_eval(row['labels'])), axis=1)
+        train_val_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/reuters_train.csv'")
+        train_val_df['labels'] = train_val_df.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
 
-        test_df = pd.read_csv(f"{DATA_DIR}/reuters/reuters_test.csv'")
+        test_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/reuters_test.csv'")
         test_df['labels'] = test_df.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
 
         #--------loading and storing labels to mlflow
-        labels = np.load("{DATA_DIR}/reuters/labels.npy")
+        labels = np.load(f"{DATA_DIR}/reuters/labels.npy")
         num_labels = len(labels)
         mlflowLogger.store_param("col_names", labels)
         mlflowLogger.store_param("num_labels", num_labels)
@@ -123,15 +123,48 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
 
 
     pretty=PrettyTable()
+    label_counts_total = []
     pretty.field_names = ['Label', 'total', 'train', 'test','val']
     for pathology, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_train, label_counts_test, label_counts_val):
         cnt_total = cnt_train + cnt_test + cnt_val
+        label_counts_total.append(cnt_total)
         pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
     print(pretty)
 
     #-------check for multi-head, single or multi-task
     if head_type =="multi-task":
-        heads_index = head_args["heads_index"]
+        #check the type:   label_counts_total
+        if head_args['type'] == "givenset":
+            heads_index = head_args["heads_index"]
+
+        elif head_args['type'] == "KDE":
+            print("[  dataset  ] KDE label grouping starts!")
+            heads_index = KDE(label_counts_total, head_args['bandwidth'])
+
+        elif head_args['type'] == "meanshift":
+            print("[  dataset  ] meanshift label grouping starts!")
+            heads_index = meanshift(label_counts_total)
+
+        elif head_args['type'] == "kmediod-label":
+            print("[  dataset  ] kmediod-label grouping starts!")
+            model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+            embds = get_all_label_embds(labels, tokenizer, model)
+            if "elbow" in head_args.keys():
+                plot_elbow_method(embds,head_args['elbow'])
+            heads_index = grouping_kmediod(embds, head_args['clusters'])
+            del model
+
+        elif head_args['type'] == "kmediod-labeldesc":
+            print("[  dataset  ] kmediod-label description grouping starts!")
+            model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+            labels_list = [labels_dict[label] for label in labels]
+            # list(labels_dict.values()
+            embds = get_all_label_embds(labels_list, tokenizer, model)
+            if "elbow" in head_args.keys():
+                plot_elbow_method(embds,head_args['elbow'])
+            heads_index = grouping_kmediod(embds, head_args['clusters'])
+            del model
+
         mlflowLogger.store_param("heads_index", heads_index)
         padded_heads = padding_heads(heads_index)
         
@@ -169,3 +202,26 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     test_dataloader       = create_dataLoader(test, test_labels, batch_size)
 
     return train_dataloader, validation_dataloader, test_dataloader, num_labels
+
+labels_dict = {
+    'earn': "", 
+    'acq': "", 
+    'money-fx': "", 
+    'grain': "", 
+    'crude': "", 
+    'trade': "", 
+    'interest': "", 
+    'wheat': "", 
+    'ship': "", 
+    'corn': "", 
+    'money-supply': "", 
+    'dlr': "", 
+    'sugar': "", 
+    'oilseed': "", 
+    'coffee': "", 
+    'gnp': "", 
+    'gold': "", 
+    'veg-oil': "", 
+    'soybean': "", 
+    'bop': ""
+}
