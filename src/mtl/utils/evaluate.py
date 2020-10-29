@@ -1,4 +1,4 @@
-from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, f1_score, accuracy_score, label_ranking_average_precision_score
+from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, f1_score, accuracy_score, label_ranking_average_precision_score, precision_recall_fscore_support
 import numpy as np
 
 __all__ = ["calculate_f1_acc", "calculate_f1_acc_test"]
@@ -13,8 +13,9 @@ def calculate_f1_acc(pred_labels, true_labels, threshold = 0.50):
     f1_micro = f1_score(target,pred,average='micro')*100
     f1_macro = f1_score(target,pred,average='macro')*100
     acc = accuracy_score(target, pred)*100
+    prf = precision_recall_fscore_support(target, pred, average=None)
     LRAP = label_ranking_average_precision_score(target, pred_labels)
-    return f1_micro, f1_macro, acc, LRAP
+    return f1_micro, f1_macro, acc, LRAP, prf
 
 def calculate_f1_acc_test(pred_labels, true_labels, test_label_cols, threshold = 0.50):
     # pred_bools = [pl>threshold for pl in pred_labels]
