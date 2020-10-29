@@ -39,6 +39,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
     heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
 
+
+    head_index_flatten = [i for head_index in heads_index for i in head_index]
+    new_col_names_order = [col_names[index] for index in head_index_flatten]
     #-------load heads
     head_count = [len(group) for group in heads_index]
     nheads = len(head_count)
@@ -165,11 +168,15 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
 
         true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
         pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
-        val_f1_micro, val_f1_macro, val_acc, _ = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
+        val_f1_micro, val_f1_macro, val_acc, LRAP, prf = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
 
         mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e)
         mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e)
         mlflowLogger.store_metric("validation.acc", val_acc, e)
+
+        #log percision, recall, f1 for each label
+        for indx, _label in enumerate(new_col_names_order):
+            mlflowLogger.store_metric(f"validation.{_label}.f1", prf[2][indx], e) #index 2 becuz it has percision, recall, f1
 
         true_labels_each_head = np.array(true_labels_each_head)
         pred_labels_each_head = np.array(pred_labels_each_head)
@@ -182,7 +189,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
             i_head_pred_labels = pred_labels_each_head[:,i]
             i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
-            val_head_f1_micro, val_head_f1_macro, val_head_acc, _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
+            val_head_f1_micro, val_head_f1_macro, val_head_acc, _ , _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
             mlflowLogger.store_metric(f"validation.headacc.{i}", val_head_acc, e)
             mlflowLogger.store_metric(f"validation.headf1_micro.{i}", val_head_f1_micro, e)
             mlflowLogger.store_metric(f"validation.headf1_macro.{i}", val_head_f1_macro, e)
@@ -233,8 +240,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
     
 
-    head_index_flatten = [i for head_index in heads_index for i in head_index]
-    new_col_names_order = [col_names[index] for index in head_index_flatten]
+    
     test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
     mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro, e)
     mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro, e)
@@ -254,7 +260,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         i_head_pred_labels = pred_labels_each_head[:,i]
         i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
-        testhead_f1_micro, testhead_f1_macro, testhead_acc, testhead_LRAP = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
+        testhead_f1_micro, testhead_f1_macro, testhead_acc, testhead_LRAP, _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
         mlflowLogger.store_metric(f"test.headf1_micro.{i}", testhead_f1_micro, e)
         mlflowLogger.store_metric(f"test.headf1_macro.{i}", testhead_f1_macro, e)
         mlflowLogger.store_metric(f"test.headacc.{i}", testhead_acc, e)
@@ -349,11 +355,15 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
         true_labels_signlehead = np.concatenate([item.to('cpu').numpy() for item in true_labels_signlehead])
         pred_labels_singlehead = np.concatenate([item.to('cpu').numpy() for item in pred_labels_singlehead])
 
-        val_f1_micro, val_f1_macro, val_acc, _ = calculate_f1_acc(pred_labels_singlehead, true_labels_signlehead)
+        val_f1_micro, val_f1_macro, val_acc, _ , prf = calculate_f1_acc(pred_labels_singlehead, true_labels_signlehead)
 
         mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e)
         mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e)
         mlflowLogger.store_metric("validation.acc", val_acc, e)
+
+        #log percision, recall, f1 for each label
+        for indx, _label in enumerate(col_names):
+            mlflowLogger.store_metric(f"validation.{_label}.f1", prf[2][indx], e) #index 2 becuz it has 0:percision, 1:recall, 2:f1
 
     #============test=============
     # Put model in evaluation mode to evaluate loss on the validation set
