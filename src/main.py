@@ -52,8 +52,6 @@ def run(config, gpu_id=0):
     batch_size = cfg['training']["batch_size"]
     
     #-------Setup datasets
-    #if datasplit is true dataset that has only train, test; we will split the train to train and valid
-    # if datasplit false, dataset has train, val, test itself.
     train_dataloader, val_dataloader, test_dataloader, num_labels = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], batch_size)
 
     #-------Setup Head
