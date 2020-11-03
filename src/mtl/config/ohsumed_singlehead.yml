@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: ohsumed_experiments
-  run_name: signlehead_bert_e30
+  run_name: signlehead_bert_e10
   tracking_uri: mlruns
 
 dataset: 
@@ -17,7 +17,7 @@ model:
     
 training:
   type: singlehead_cls
-  epoch : 30
+  epoch : 10
   batch_size : 16
   use_cuda : True
 

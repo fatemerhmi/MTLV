@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: ohsumed_experiments
-  run_name:  MTL_kmediod-label_avgloss_e15
+  run_name:  MTL_KDE100_wlosspsum_e10
   tracking_uri: mlruns
 
 dataset: 
@@ -17,7 +17,7 @@ model:
     
 training:
   type: MTL_cls
-  epoch : 15
+  epoch : 10
   batch_size : 16
   use_cuda : True
 
@@ -25,10 +25,10 @@ training:
 head: 
   multi-task:
     heads: MultiLabelCLS
-    type: kmediod-label  # givenset meanshift KDE kmediod-label
-    # bandwidth: 500
-    elbow: 7
-    clusters: 4
+    type: KDE  # givenset meanshift KDE kmediod-label
+    bandwidth: 100
+    # elbow: 7
+    # clusters: 4
     # count: 4
     # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
 
@@ -45,7 +45,7 @@ optimizer:
     lr: 0.00002
 
 loss:
-  type: avgloss  #avgloss sumloss
+  type: weighted_lossp_sum  #avgloss sumloss weighted_lossp_sum
 
 # loss:
 #   type: weightedsum # weightedavg weightedsum

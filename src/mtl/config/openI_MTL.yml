@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MTL_kmediod-labeldesc4_wavgloss_e20
+  run_name: MTL_kmediod4-labeldesc_wlossp_sum_e20
   tracking_uri: mlruns
 
 dataset: 
@@ -19,7 +19,7 @@ model:
 training:
   type: MTL_cls
   # type: singlehead_cls
-  epoch : 20
+  epoch : 15
   batch_size : 16
   use_cuda : True
 
@@ -46,7 +46,7 @@ optimizer:
     lr: 0.00002
 
 loss:
-  type: weightmean-loss  #avgloss sumloss weightmean-loss weightsigmoid-loss
+  type: weighted_lossp_sum  #avgloss sumloss 
 
 # loss:
 #   type: weightedsum # weightedavg weightedsum 
