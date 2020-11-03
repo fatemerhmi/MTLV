@@ -25,10 +25,26 @@ This will initialize your local configuration file
 ./setup.sh
 
 ## Run your experiments:
-python3 src/main.py --help       
-python3 src/main.py run --config src/mtl/config/openI_1layer.yml      
-python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1
+`python3 src/main.py --help`       
+`python3 src/main.py run --config src/mtl/config/openI_1layer.yml`      
+`python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
 
+### Model configuration:
+Example:
+```
+model: 
+  bert:
+    model_name: bert-base-uncased
+    freeze: False
+```
+| Model Name           | Description |
+| ---------------------|-------------- |
+| bert-base-uncased | Description       |
+| bert-base-cased   | Description        |
+| BioBERT-Basev1-1  | based on BERT-base-Cased (same vocabulary) - PubMed 1M |
+| BioBERT-Basev1-0-PM    | based on BERT-base-Cased (same vocabulary) - PubMed 200K |
+| BioBERT-Basev1-0-PMC   | based on BERT-base-Cased (same vocabulary) - PMC 270K |
+| BioBERT-Basev1-0-PM-PMC   | based on BERT-base-Cased (same vocabulary) - PubMed 200K + PMC 270K |
 ### MTL head configuration example options:
 1. Any given set
 ```
