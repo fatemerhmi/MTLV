@@ -1,7 +1,7 @@
 import statistics 
 import numpy as np
 
-__all__ = ['sumloss', 'avgloss', 'weightedavg', 'weightedsum', "weighted_lossp_sum"]
+__all__ = ['sumloss', 'avgloss', 'weightedavg', 'weightedsum', "weighted_lossp_sum", "weighted_lossp_avg"]
 
 #-------sum loss function
 def sumloss(head_losses):
@@ -27,7 +27,6 @@ def weightedavg(head_losses, weights):
     count = len(head_losses)
     return loss/count
 
-
 #-------weighted loss sum function
 # len of wieght loss should be the same as head count 
 def weightedsum(head_losses, weights):
@@ -42,3 +41,11 @@ def weighted_lossp_sum(head_losses):
     for head in head_losses:
         loss += ((head/m) * head)
     return loss
+
+def weighted_lossp_avg(head_losses):
+    loss = 0
+    m = statistics.mean(np.array(head_losses).astype(np.float32))
+    for head in head_losses:
+        loss += ((head/m) * head)
+    count = len(head_losses)
+    return loss/count
