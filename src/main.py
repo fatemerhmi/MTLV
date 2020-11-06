@@ -50,16 +50,16 @@ def run(config, gpu_id=0):
     #-------Getting training args
     epoch = cfg['training']["epoch"]
     batch_size = cfg['training']["batch_size"]
+    training_type = cfg['training']['type']
     
     #-------Setup datasets
-    train_dataloader, val_dataloader, test_dataloader, num_labels = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], batch_size)
+    train_dataloader, val_dataloader, test_dataloader, num_labels = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size)
 
     #-------Setup Head
     #TODO: mighe need it for MTL
 
     #-------setup model
     # Load model, the pretrained model will include a single linear classification layer on top for classification. 
-    training_type = cfg['training']['type']
     if training_type == "singlehead_cls":
         model = configuration.setup_model(cfg['model'])(num_labels, training_type)
     if training_type == "MTL_cls":
