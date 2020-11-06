@@ -30,6 +30,8 @@ This will initialize your local configuration file
 `python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
 
 ### Model configuration:
+Download any of the bioBERT versions bellow and locate them in `\model_wieghts` directory. Then run the script.sh script that is already located in `\model_wieghts` to convert the tensorflow weights to pytorch weights. After running this script, pytorch_model.bin is added to the same directory and the library will automatically use it when the model name is indicated in config files. 
+
 Example:
 ```
 model: 
@@ -45,6 +47,13 @@ model:
 | BioBERT-Basev1-0-PM    | based on BERT-base-Cased (same vocabulary) - PubMed 200K |
 | BioBERT-Basev1-0-PMC   | based on BERT-base-Cased (same vocabulary) - PMC 270K |
 | BioBERT-Basev1-0-PM-PMC   | based on BERT-base-Cased (same vocabulary) - PubMed 200K + PMC 270K |
+
+for all the BioBERT versions, the tokenizer should be cased version of bert:
+```
+tokenizer:
+  bert:
+    name: bert_base_cased
+```
 ### MTL head configuration example options:
 1. Any given set
 ```
