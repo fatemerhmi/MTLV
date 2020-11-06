@@ -3,8 +3,10 @@ from torch import nn
 import torch
 from torch.nn import BCEWithLogitsLoss, BCELoss, CrossEntropyLoss
 from transformers.modeling_outputs import SequenceClassifierOutput 
+import os
 
-__all__ = ['bert_base_uncased', 'bert_large_uncased', 'bert_base_cased', 'bert_large_cased']
+__all__ = ['bert_base_uncased', 'bert_base_cased', \
+'BioBERT_Basev1_1', 'BioBERT_Basev1_0_PM', 'BioBERT_Basev1_0_PMC', 'BioBERT_Basev1_0_PM_PMC']
 
 class BertCLS(BertPreTrainedModel):
     def __init__(self, config):
@@ -40,7 +42,7 @@ class BertCLS(BertPreTrainedModel):
         )
 
         pooled_output = outputs[1]
-        pooled_output = self.dropout(pooled_output)
+        # pooled_output = self.dropout(pooled_output)
         return pooled_output
 
 class BertCLS_multilabel_singleHead(BertPreTrainedModel):
@@ -172,7 +174,7 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-
+        
         pooled_output = outputs[1]
 
         pooled_output = self.dropout(pooled_output)
@@ -204,29 +206,109 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
             attentions=outputs.attentions,
         )
 
+
+
 def bert_base_uncased(num_labels, training_type, device='gpu'):
     if training_type == "singlehead_cls":
         # model =  BertCLS.from_pretrained('bert-base-uncased')
         model =  BertCLS_multilabel_singleHead.from_pretrained('bert-base-uncased', num_labels = num_labels, return_dict=True)
         model.embedding_size = model.hidden_size_BertCLS
-        return model
+
     elif training_type == "MTL_cls":
         model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-uncased', num_labels2 = [num_labels, device], return_dict=True)
         model.embedding_size = model.hidden_size_BertCLS
-        return model
 
-def bert_large_uncased():
-    model = BertCLS.from_pretrained('bert-base-uncased')
-    model.embedding_size = model.hidden_size_BertCLS
+    elif training_type == "emb_cls":
+        model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+
+    return model
+
+def bert_base_cased(num_labels, training_type, device='gpu'):
+    if training_type == "singlehead_cls":
+        # model =  BertCLS.from_pretrained('bert-base-uncased')
+        model =  BertCLS_multilabel_singleHead.from_pretrained('bert-base-cased', num_labels = num_labels, return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+        
+    elif training_type == "MTL_cls":
+        model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-cased', num_labels2 = [num_labels, device], return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "emb_cls":
+        model = BertModel.from_pretrained('bert-base-cased', return_dict=True)
+
     return model
 
 
-def bert_base_cased():
-    model = BertCLS.from_pretrained('bert-base-cased')
-    model.embedding_size = model.hidden_size_BertCLS
+def BioBERT_Basev1_1(num_labels, training_type, device='gpu'):
+    MODEL_PATH = "model_weights/biobert_v1.1_pubmed"
+    if not os.path.exists(f"{MODEL_PATH}/pytorch_model.bin"):
+        raise NameError(f'Could not find {MODEL_PATH}/pytorch_model.bin! Download the BioBERT model and store them in model_weights directory, then run the script to convert it to pytorch weights.')
+    
+    if training_type == "singlehead_cls":
+        # model =  BertCLS.from_pretrained('bert-base-uncased')
+        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "MTL_cls":
+        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "emb_cls":
+        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+
+    return model
+def BioBERT_Basev1_0_PM(num_labels, training_type, device='gpu'):
+    MODEL_PATH = "model_weights/biobert_v1.0_pubmed"
+    if not os.path.exists(f"{MODEL_PATH}/pytorch_model.bin"):
+        raise NameError(f'Could not find {MODEL_PATH}/pytorch_model.bin! Download the BioBERT model and store them in model_weights directory, then run the script to convert it to pytorch weights.')
+    
+    if training_type == "singlehead_cls":
+        # model =  BertCLS.from_pretrained('bert-base-uncased')
+        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "MTL_cls":
+        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+    elif training_type == "emb_cls":
+        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+
     return model
 
-def bert_large_cased():
-    model = BertCLS.from_pretrained('bert-large-cased')
-    model.embedding_size = model.hidden_size_BertCLS
+def BioBERT_Basev1_0_PMC(num_labels, training_type, device='gpu'):
+    MODEL_PATH = "model_weights/biobert_v1.0_pmc"
+    if not os.path.exists(f"{MODEL_PATH}/pytorch_model.bin"):
+        raise NameError(f'Could not find {MODEL_PATH}/pytorch_model.bin! Download the BioBERT model and store them in model_weights directory, then run the script to convert it to pytorch weights.')
+    
+    if training_type == "singlehead_cls":
+        # model =  BertCLS.from_pretrained('bert-base-uncased')
+        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "MTL_cls":
+        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "emb_cls":
+        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+
+    return model
+
+def BioBERT_Basev1_0_PM_PMC(num_labels, training_type, device='gpu'):
+    MODEL_PATH = "model_weights/biobert_v1.0_pubmed_pmc"
+    if not os.path.exists(f"{MODEL_PATH}/pytorch_model.bin"):
+        raise NameError(f'Could not find {MODEL_PATH}/pytorch_model.bin! Download the BioBERT model and store them in model_weights directory, then run the script to convert it to pytorch weights.')
+    
+    if training_type == "singlehead_cls":
+        # model =  BertCLS.from_pretrained('bert-base-uncased')
+        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "MTL_cls":
+        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "emb_cls":
+        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+
     return model
