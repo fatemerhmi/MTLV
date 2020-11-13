@@ -3,7 +3,8 @@ cache_dir/
 findings_frequency.tex
 outputs/
 runs/
-model_wieghts/
+model_weights/bio**
+model_weights/.**
 mlruns/
 artifacts/
 .vscode/
