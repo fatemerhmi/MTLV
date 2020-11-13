@@ -45,7 +45,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
 def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None):
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names")) 
-    heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index")) if fold_i == None else ast.literal_eval(mlflowLogger.get_params(f"heads_index.Fold{fold_i}"))
+    heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index")) #if fold_i == None else ast.literal_eval(mlflowLogger.get_params(f"heads_index.Fold{fold_i}"))
 
 
     head_index_flatten = [i for head_index in heads_index for i in head_index]
@@ -274,8 +274,10 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         mlflowLogger.store_metric(f"test.headacc.{i}", testhead_acc, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headacc.{i}", testhead_acc, e)
         mlflowLogger.store_metric(f"test.headLRAP.{i}", testhead_LRAP, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headLRAP.{i}", testhead_LRAP, e)
 
-    if fold_i == None: mlflowLogger.finish_mlflowrun()
-    if fold_i !=None: return test_f1_micro, test_f1_macro, test_acc
+    if fold_i == None: 
+        mlflowLogger.finish_mlflowrun()
+    if fold_i != None: 
+        return test_f1_micro, test_f1_macro, test_acc
 
 def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i = None):
     #-------get params from mlflow
