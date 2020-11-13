@@ -30,7 +30,7 @@ This will initialize your local configuration file
 `python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
 
 ### Model configuration:
-Download any of the bioBERT versions bellow and locate them in `\model_wieghts` directory. Then run the script.sh script that is already located in `\model_wieghts` to convert the tensorflow weights to pytorch weights. After running this script, pytorch_model.bin is added to the same directory and the library will automatically use it when the model name is indicated in config files. 
+Download any of the [BioBERT](https://github.com/dmis-lab/biobert) versions bellow and locate them in `\model_wieghts` directory. Then run the script.sh script that is already located in `\model_wieghts` to convert the tensorflow weights to pytorch weights. After running this script, pytorch_model.bin is added to the same directory and the library will automatically use it when the model name is indicated in config files. 
 
 Example:
 ```
@@ -85,7 +85,7 @@ head:
 ```
 4. Kmediod
 For grouping heads based on meaning. 
-options for type: kmediod-label, kmediod-labeldesc 
+options for type: `kmediod-label`, `kmediod-labeldesc` 
 As some datasets have technical words as their label, a sentence about the meaning of the label is given to the model to find a more meaning ful representation for clustering. 
 ```
 head: 
