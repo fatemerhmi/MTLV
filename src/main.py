@@ -53,28 +53,70 @@ def run(config, gpu_id=0):
     training_type = cfg['training']['type']
     
     #-------Setup datasets
-    train_dataloader, val_dataloader, test_dataloader, num_labels = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size)
+    training_cv = cfg['training']['cv']
+    fold = cfg['training']['fold']
+    dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size, training_cv)
+    if training_cv:
+        results = []
+        fold_i = 0
+        for train_dataloader, val_dataloader, test_dataloader, num_labels in dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg, training_cv, fold): 
+            fold_i += 1
+            print(f"[main] Fold {fold_i}")
+            #-------setup dataset
+            # train_dataloader, val_dataloader, test_dataloader, num_labels = dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg, training_cv, fold)
 
-    #-------Setup Head
-    #TODO: mighe need it for MTL
+            #-------setup model
+            # Load model, the pretrained model will include a single linear classification layer on top for classification. 
+            if training_type == "singlehead_cls":
+                model = configuration.setup_model(cfg['model'])(num_labels, training_type)
+            if training_type == "MTL_cls":
+                heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
+                num_labels = [len(labels) for labels in heads_index]
+                model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
 
-    #-------setup model
-    # Load model, the pretrained model will include a single linear classification layer on top for classification. 
-    if training_type == "singlehead_cls":
-        model = configuration.setup_model(cfg['model'])(num_labels, training_type)
-    if training_type == "MTL_cls":
-        heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
-        num_labels = [len(labels) for labels in heads_index]
-        model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
+            freeze = list(cfg['model'].values())[0]['freeze']
+            if freeze:
+                # model.freeze_bert_encoder()
+                for param in model.base_model.parameters():
+                    param.requires_grad = False
 
-    freeze = list(cfg['model'].values())[0]['freeze']
-    if freeze:
-        # model.freeze_bert_encoder()
-        for param in model.base_model.parameters():
-            param.requires_grad = False
+            #-------setup training
+            test_f1_micro, test_f1_macro, test_acc = train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, fold_i)
+            results.append([test_f1_micro, test_f1_macro, test_acc])
+        #-------calculate mean and variance of run details
+        results = np.array(results)
+        mean = np.mean(results, axis=0)
+        mlflowLogger.store_metric(f"test.f1_micro.mean", mean[0])       
+        mlflowLogger.store_metric(f"test.f1_macro.mean", mean[1])       
+        mlflowLogger.store_metric(f"test.acc.mean", mean[2])          
+        
+        std = np.std(results, axis=0)
+        mlflowLogger.store_metric(f"test.f1_micro.std", std[0])       
+        mlflowLogger.store_metric(f"test.f1_macro.std", std[1])       
+        mlflowLogger.store_metric(f"test.acc.std", std[2])          
+        
+        mlflowLogger.finish_mlflowrun()
+        
+    else:
+        train_dataloader, val_dataloader, test_dataloader, num_labels = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size)
 
-    #-------start training
-    train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda)
+        #-------setup model
+        # Load model, the pretrained model will include a single linear classification layer on top for classification. 
+        if training_type == "singlehead_cls":
+            model = configuration.setup_model(cfg['model'])(num_labels, training_type)
+        if training_type == "MTL_cls":
+            heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
+            num_labels = [len(labels) for labels in heads_index]
+            model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
+
+        freeze = list(cfg['model'].values())[0]['freeze']
+        if freeze:
+            # model.freeze_bert_encoder()
+            for param in model.base_model.parameters():
+                param.requires_grad = False
+
+        #-------start training
+        train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda)
 
 if __name__ == "__main__":
     main()

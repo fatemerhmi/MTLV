@@ -8,9 +8,8 @@ import mtl.utils.configuration as configuration
 import mtl.utils.logger as mlflowLogger
 from mtl.heads.clsHeads import *
 from mtl.utils.evaluate import *
-import mtl.utils.logger as mlflowLogger 
 
-def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cuda):
+def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cuda, fold_i = None):
     #-------config
     training_args = cfg['training']
     cfg_optimizer = cfg['optimizer']
@@ -26,18 +25,27 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
     epoch = training_args['epoch']
 
     #-------training type:
-    if training_type == "MTL_cls": #TODO
-        cfg_loss = cfg['loss'] # TODO
+    if training_type == "MTL_cls": 
+        cfg_loss = cfg['loss'] 
         print(f"[  training  ] The training type is: Multi-head classification.")
-        mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
+        if fold_i != None:
+            print(f"[training] Fold {fold_i}")
+            test_f1_micro, test_f1_macro, test_acc = mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i)
+        else:
+            mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
     elif training_type == "singlehead_cls":
-        singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
-    return
+        if fold_i != None:
+            print(f"[training] Fold {fold_i}")
+            test_f1_micro, test_f1_macro, test_acc = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i)
+        else:
+            singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
+    if fold_i != None:
+        return test_f1_micro, test_f1_macro, test_acc
 
-def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss):
+def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None):
     #-------get params from mlflow
-    col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
-    heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
+    col_names = ast.literal_eval(mlflowLogger.get_params("col_names")) 
+    heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index")) if fold_i == None else ast.literal_eval(mlflowLogger.get_params(f"heads_index.Fold{fold_i}"))
 
 
     head_index_flatten = [i for head_index in heads_index for i in head_index]
@@ -111,9 +119,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         train_headloss = train_headloss/nb_tr_steps
         index = 0
         for headloss in train_headloss:
-            mlflowLogger.store_metric(f"training.headloss.{index}", headloss.item(), e)
+            mlflowLogger.store_metric(f"training.headloss.{index}", headloss.item(), e) if fold_i == None else mlflowLogger.store_metric(f"training.Fold{fold_i}.headloss.{index}", headloss.item(), e)
             index +=1
-        mlflowLogger.store_metric("training.loss", tr_loss/nb_tr_steps, e)
+        mlflowLogger.store_metric("training.loss", tr_loss/nb_tr_steps, e) if fold_i == None else mlflowLogger.store_metric(f"training.Fold{fold_i}.loss", tr_loss/nb_tr_steps, e)
         # print("Train loss: {}".format(tr_loss/nb_tr_steps))
 
         #===========Validation==========
@@ -146,9 +154,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
                     val_loss = loss_func(outputs.loss, cfg_loss['weights']).item()
                 else:
                     val_loss = loss_func(outputs.loss).item()
-                mlflowLogger.store_metric("validation.loss", val_loss, e)
+                mlflowLogger.store_metric("validation.loss", val_loss, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.loss", val_loss, e)
                 for head_indx, val_loss_head in enumerate(outputs.loss):
-                    mlflowLogger.store_metric(f"validation.loss.head{head_indx}", val_loss_head.item(), e)
+                    mlflowLogger.store_metric(f"validation.loss.head{head_indx}", val_loss_head.item(), e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.loss.head{head_indx}", val_loss_head.item(), e)
 
                 # store batch labels 
                 pred_label_b = np.array(pred_label_heads)
@@ -170,13 +178,14 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
         val_f1_micro, val_f1_macro, val_acc, LRAP, prf = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
 
-        mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e)
-        mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e)
-        mlflowLogger.store_metric("validation.acc", val_acc, e)
+        mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_micro", val_f1_micro, e)
+        mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_macro", val_f1_macro, e)
+        mlflowLogger.store_metric("validation.acc", val_acc, e)           if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.acc", val_acc, e)
 
         #log percision, recall, f1 for each label
         for indx, _label in enumerate(new_col_names_order):
-            mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e) #index 2 becuz it has percision, recall, f1
+            #index 2 becuz it has percision, recall, f1
+            mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
 
         true_labels_each_head = np.array(true_labels_each_head)
         pred_labels_each_head = np.array(pred_labels_each_head)
@@ -190,9 +199,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
             i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
             val_head_f1_micro, val_head_f1_macro, val_head_acc, _ , _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
-            mlflowLogger.store_metric(f"validation.headacc.{i}", val_head_acc, e)
-            mlflowLogger.store_metric(f"validation.headf1_micro.{i}", val_head_f1_micro, e)
-            mlflowLogger.store_metric(f"validation.headf1_macro.{i}", val_head_f1_macro, e)
+            mlflowLogger.store_metric(f"validation.headacc.{i}", val_head_acc, e)           if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headacc.{i}", val_head_acc, e)
+            mlflowLogger.store_metric(f"validation.headf1_micro.{i}", val_head_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headf1_micro.{i}", val_head_f1_micro, e)
+            mlflowLogger.store_metric(f"validation.headf1_macro.{i}", val_head_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headf1_macro.{i}", val_head_f1_macro, e)
 
     #============test=============
     # Put model in evaluation mode to evaluate loss on the validation set
@@ -242,12 +251,11 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
 
     
     test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
-    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro, e)
-    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro, e)
-    mlflowLogger.store_metric(f"test.acc", test_acc, e)
-    mlflowLogger.store_metric(f"test.LRAP", test_LRAP, e)
-    # mlflowLogger.store_param(f"test.report", str(test_clf_report))
-    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt")
+    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro, e)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_micro", test_f1_micro, e)
+    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro, e)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_macro", test_f1_macro, e)
+    mlflowLogger.store_metric(f"test.acc", test_acc, e)               if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.acc", test_acc, e)     
+    mlflowLogger.store_metric(f"test.LRAP", test_LRAP, e)             if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.LRAP", test_LRAP, e)  
+    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"cls_report.Fold{fold_i}", "txt")
 
     true_labels_each_head = np.array(true_labels_each_head)
     pred_labels_each_head = np.array(pred_labels_each_head)
@@ -261,14 +269,15 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
         testhead_f1_micro, testhead_f1_macro, testhead_acc, testhead_LRAP, _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
-        mlflowLogger.store_metric(f"test.headf1_micro.{i}", testhead_f1_micro, e)
-        mlflowLogger.store_metric(f"test.headf1_macro.{i}", testhead_f1_macro, e)
-        mlflowLogger.store_metric(f"test.headacc.{i}", testhead_acc, e)
-        mlflowLogger.store_metric(f"test.headLRAP.{i}", testhead_LRAP, e)
+        mlflowLogger.store_metric(f"test.headf1_micro.{i}", testhead_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_micro.{i}", testhead_f1_micro, e)
+        mlflowLogger.store_metric(f"test.headf1_macro.{i}", testhead_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_macro.{i}", testhead_f1_macro, e)
+        mlflowLogger.store_metric(f"test.headacc.{i}", testhead_acc, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headacc.{i}", testhead_acc, e)
+        mlflowLogger.store_metric(f"test.headLRAP.{i}", testhead_LRAP, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headLRAP.{i}", testhead_LRAP, e)
 
-    mlflowLogger.finish_mlflowrun()
+    if fold_i == None: mlflowLogger.finish_mlflowrun()
+    if fold_i !=None: return test_f1_micro, test_f1_macro, test_acc
 
-def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer):
+def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i = None):
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
     # print("training", col_names)
@@ -326,7 +335,7 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
             nb_tr_examples += b_input_ids.size(0)
             nb_tr_steps += 1
 
-        mlflowLogger.store_metric("training.loss", tr_loss/nb_tr_steps, e)
+        mlflowLogger.store_metric("training.loss", tr_loss/nb_tr_steps, e)  if fold_i == None else mlflowLogger.store_metric(f"training.Fold{fold_i}.loss", tr_loss/nb_tr_steps, e)
 
         #===========Validation==========
         # Put model in evaluation mode to evaluate loss on the validation set
@@ -345,7 +354,7 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
 
                 #----store validation loss
                 val_loss = outputs.loss.item()
-                mlflowLogger.store_metric("validation.loss", val_loss, e)
+                mlflowLogger.store_metric("validation.loss", val_loss, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.loss", val_loss, e)
 
                 pred_label_b = torch.sigmoid(outputs.logits)
 
@@ -357,13 +366,14 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
 
         val_f1_micro, val_f1_macro, val_acc, _ , prf = calculate_f1_acc(pred_labels_singlehead, true_labels_signlehead)
 
-        mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e)
-        mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e)
-        mlflowLogger.store_metric("validation.acc", val_acc, e)
+        mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_micro", val_f1_micro, e)
+        mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_macro", val_f1_macro, e)
+        mlflowLogger.store_metric("validation.acc", val_acc, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.acc", val_acc, e)
 
         #log percision, recall, f1 for each label
         for indx, _label in enumerate(col_names): 
-            mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e) #index 2 becuz it has 0:percision, 1:recall, 2:f1
+            #index 2 becuz it has 0:percision, 1:recall, 2:f1
+            mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
 
     #============test=============
     # Put model in evaluation mode to evaluate loss on the validation set
@@ -388,10 +398,15 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
     pred_labels_singlehead = np.concatenate([item.to('cpu').numpy() for item in pred_labels_singlehead])
 
     test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_singlehead, true_labels_signlehead, col_names)
-    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro)
-    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro)
-    mlflowLogger.store_metric(f"test.acc", test_acc)
-    mlflowLogger.store_metric(f"test.LRAP", test_LRAP)
-    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt")
+    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro)        if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_micro", test_f1_micro)
+    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro)        if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_macro", test_f1_macro)
+    mlflowLogger.store_metric(f"test.acc", test_acc)                  if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.acc", test_acc) 
+    mlflowLogger.store_metric(f"test.LRAP", test_LRAP)                if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.LRAP", test_LRAP)
+    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"cls_report.Fold{fold_i}.", "txt")
 
-    mlflowLogger.finish_mlflowrun()
+    if fold_i !=None: 
+        return test_f1_micro, test_f1_macro, test_acc
+    if fold_i == None: 
+        mlflowLogger.finish_mlflowrun()
+
+
