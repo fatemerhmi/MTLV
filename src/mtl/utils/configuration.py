@@ -39,7 +39,7 @@ def setup_model(model_cfg):
 
     return model_fun
 
-def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, training_cv = False):
+def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, training_cv=False):
 
     #-------dataset name and args:
     dataset_name = list(dataset_cfg.keys())[0]
@@ -91,12 +91,14 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, t
         imported_dataset_module = importlib.import_module( "mtl.datasets."+ dataset_name)
     else:
         raise NameError(f'{dataset_name} does not appear in this lists of datasets we support: {available_datsets}')
-
+    
     if training_cv == False:
-        train_dataloader, val_dataloader, test_dataloader, num_labels = getattr(imported_dataset_module, "_setup_datasets")(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg)
+        dataset_obj = getattr(imported_dataset_module, "_setup_datasets")
+        train_dataloader, val_dataloader, test_dataloader, num_labels = dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg)
         return train_dataloader, val_dataloader, test_dataloader, num_labels
     else:
-        return getattr(imported_dataset_module, "_setup_datasets"), dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg
+        dataset_obj = getattr(imported_dataset_module, "_setup_datasets_cv")
+        return dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg
 
 def setup_optimizer(optimizer_cfg, model_parameters):
     #-------optimizer name and args:
