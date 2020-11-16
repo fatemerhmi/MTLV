@@ -327,7 +327,7 @@ def openI_dataset_preprocess(dataset_args):
 
 def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg): 
     
-    train_df_orig, test_df, labels, num_labels = openI_dataset(dataset_args)
+    train_df_orig, test_df, labels, num_labels = openI_dataset_preprocess(dataset_args)
 
     train_indexes, val_indexes = iterative_train_test_split(train_df_orig['text'], np.array(train_df_orig['labels'].to_list()), 0.15)
     val_df = train_df_orig.iloc[val_indexes,:]
@@ -342,7 +342,7 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
 
 def _setup_datasets_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold):
 
-    train_df_orig, test_df, labels, num_labels = openI_dataset(dataset_args)
+    train_df_orig, test_df, labels, num_labels = openI_dataset_preprocess(dataset_args)
 
     fold_i =0
     stratifier = IterativeStratification(n_splits=fold, order=2)

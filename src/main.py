@@ -63,11 +63,9 @@ def run(config, gpu_id=0):
     if training_cv:
         results = []
         fold_i = 0
-        for train_dataloader, val_dataloader, test_dataloader, num_labels in dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg, training_cv, fold): 
+        for train_dataloader, val_dataloader, test_dataloader, num_labels in dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold): 
             fold_i += 1
             print(f"[main] Fold {fold_i}")
-            #-------setup dataset
-            # train_dataloader, val_dataloader, test_dataloader, num_labels = dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg, training_cv, fold)
 
             #-------setup model
             # Load model, the pretrained model will include a single linear classification layer on top for classification. 
