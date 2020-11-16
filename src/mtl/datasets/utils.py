@@ -245,9 +245,9 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
     label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
     label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
 
-    pretty=PrettyTable()
+    pretty = PrettyTable()
     label_counts_total = []
-    pretty.field_names = ['Pathology', 'total', 'train', 'test','val']
+    pretty.field_names = ['Label', 'total', 'train', 'test','val']
     for pathology, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_train, label_counts_test, label_counts_val):
         cnt_total = cnt_train + cnt_test + cnt_val
         label_counts_total.append(cnt_total)
