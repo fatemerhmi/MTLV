@@ -93,11 +93,11 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, t
         raise NameError(f'{dataset_name} does not appear in this lists of datasets we support: {available_datsets}')
     
     if training_cv == False:
-        dataset_obj = getattr(imported_dataset_module, "_setup_datasets")
+        dataset_obj = getattr(imported_dataset_module, "_setup_dataset")
         train_dataloader, val_dataloader, test_dataloader, num_labels = dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg)
         return train_dataloader, val_dataloader, test_dataloader, num_labels
     else:
-        dataset_obj = getattr(imported_dataset_module, "_setup_datasets_cv")
+        dataset_obj = getattr(imported_dataset_module, "_setup_dataset_cv")
         return dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg
 
 def setup_optimizer(optimizer_cfg, model_parameters):
