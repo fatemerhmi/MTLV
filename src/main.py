@@ -53,9 +53,13 @@ def run(config, gpu_id=0):
     training_type = cfg['training']['type']
     
     #-------Setup datasets
-    training_cv = cfg['training']['cv']
-    fold = cfg['training']['fold']
-    dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size, training_cv)
+    if "cv" in cfg['training'].keys():
+        training_cv = cfg['training']['cv']
+        fold = cfg['training']['fold']
+        dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size, training_cv)
+    else:
+        training_cv = False
+        
     if training_cv:
         results = []
         fold_i = 0
