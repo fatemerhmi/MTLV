@@ -18,10 +18,11 @@ model:
     
 training:
   type: MTL_cls
-  # type: singlehead_cls
   epoch : 15
   batch_size : 16
   use_cuda : True
+  cv : True # False
+  fold : 5
 
 head: 
   multi-task:
