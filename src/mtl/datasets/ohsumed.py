@@ -12,12 +12,12 @@ from transformers import BertModel
 from mtl.datasets.utils import iterative_train_test_split, create_dataLoader, create_new_column
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
-from mtl.datasets.utils import iterative_train_test_split, create_dataLoader
+from mtl.datasets.utils import iterative_train_test_split, create_dataLoader, preprocess, preprocess_cv
 from mtl.heads.grouping_KDE import *
 from mtl.heads.grouping_meanshift import *
 from mtl.heads.grouping_kmediod import grouping_kmediod, get_all_label_embds, plot_elbow_method
 
-def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size):
+def ohsumed_dataset_preprocess(dataset_args):
     #------- load or download then set up ohsumed dataset
     DATA_DIR = dataset_args['root']
 
@@ -36,6 +36,8 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
         num_labels = len(labels)
         mlflowLogger.store_param("col_names", labels)
         mlflowLogger.store_param("num_labels", num_labels)
+
+        return train_df, test_df, labels, num_labels
 
     else:
         os.makedirs(f"{DATA_DIR}/ohsumed")
@@ -105,112 +107,159 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
         train_df_tosave = train_df.copy()
         train_df_tosave['labels'] = train_df_tosave.apply(lambda row: list(row["labels"]), axis=1)
         train_df_tosave.to_csv(f'{DATA_DIR}/ohsumed/ohsumed_train.csv', index=False)
-        del train_df_tosave
         
         test_df_tosave = test_df.copy()
         test_df_tosave['labels'] = test_df_tosave.apply(lambda row: list(row["labels"]), axis=1)
         test_df_tosave.to_csv(f'{DATA_DIR}/ohsumed/ohsumed_test.csv', index=False)
-        del test_df_tosave
 
-    train_indexes, val_indexes = iterative_train_test_split(train_df['text'], np.array(train_df['labels'].to_list()), 0.15)
+        return train_df, test_df, labels, num_labels
 
-    val_df = train_df.iloc[val_indexes,:]
-    train_df = train_df.iloc[train_indexes,:]
+def _setup_dataset(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg): 
+    
+    train_df_orig, test_df, labels, num_labels = ohsumed_dataset_preprocess(dataset_args)
+
+    train_indexes, val_indexes = iterative_train_test_split(train_df_orig['text'], np.array(train_df_orig['labels'].to_list()), 0.15)
+    val_df = train_df_orig.iloc[val_indexes,:]
+    train_df = train_df_orig.iloc[train_indexes,:]
 
     train_df.reset_index(drop=True, inplace=True)
     test_df.reset_index(drop=True, inplace=True)
     val_df.reset_index(drop=True, inplace=True)
 
-    print('Train: ', len(train_df))
-    mlflowLogger.store_param("dataset.train.len", len(train_df))
-    print('Test: ', len(test_df))
-    mlflowLogger.store_param("dataset.test.len", len(test_df))
-    print('Val: ', len(val_df))
-    mlflowLogger.store_param("dataset.val.len", len(val_df))
-
-    #-------table for train, test,val counts
-    # label_counts_total = np.array(df.labels.to_list()).sum(axis=0)
-    label_counts_train = np.array(train_df.labels.to_list()).sum(axis=0)
-    label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
-    label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
-
-    pretty=PrettyTable()
-    label_counts_total = []
-    pretty.field_names = ['Label', 'total', 'train', 'test','val']
-    for pathology, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_train, label_counts_test, label_counts_val):
-        cnt_total = cnt_train + cnt_test + cnt_val
-        label_counts_total.append(cnt_total)
-        pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
-    print(pretty)
-
-    # pretty=PrettyTable()
-    # pretty.field_names = ['Label', 'total', 'train', 'test','val']
-    # for pathology, cnt_total, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_total, label_counts_train, label_counts_test, label_counts_val):
-    #     pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
-    # print(pretty)
-
-    #-------check for multi-head, single or multi-task
-    if head_type =="multi-task":
-        #check the type:   label_counts_total
-        if head_args['type'] == "givenset":
-            heads_index = head_args["heads_index"]
-        elif head_args['type'] == "KDE":
-            heads_index = KDE(label_counts_total, head_args['bandwidth'])
-        elif head_args['type'] == "meanshift":
-             heads_index = meanshift(label_counts_total)
-        elif head_args['type'] == "kmediod-label":
-            print("[  dataset  ] kmediod-label grouping starts!")
-            model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
-            embds = get_all_label_embds(labels, tokenizer, model) # change this one to use setup model function
-            if "elbow" in head_args.keys():
-                plot_elbow_method(embds,head_args['elbow'])
-            heads_index = grouping_kmediod(embds, head_args['clusters'])
-            del model
-        elif head_args['type'] == "kmediod-labeldesc":
-            model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
-            labels_list = [labels_dict[labels_C_to_title[label]] for label in labels]
-            embds = get_all_label_embds(labels_list, tokenizer, model)
-            if "elbow" in head_args.keys():
-                plot_elbow_method(embds,head_args['elbow'])
-            heads_index = grouping_kmediod(embds, head_args['clusters'])
-            del model
-
-        mlflowLogger.store_param("heads_index", heads_index)
-        padded_heads = padding_heads(heads_index)
-        
-        #--group the heads
-        train_df = group_heads(padded_heads, train_df)
-        test_df = group_heads(padded_heads, test_df)
-        val_df = group_heads(padded_heads, val_df)
-
-        #--prepare labels for dataloader
-        train_labels = torch.from_numpy(np.array(train_df.head_labels.to_list()))
-        test_labels = torch.from_numpy(np.array(test_df.head_labels.to_list()))
-        val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
-
-    elif head_type =="single-head":
-        #--prepare labels for dataloader
-        train_labels = torch.from_numpy(np.array(train_df.labels.to_list()))
-        test_labels = torch.from_numpy(np.array(test_df.labels.to_list()))
-        val_labels = torch.from_numpy(np.array(val_df.labels.to_list()))
-    else:
-        raise Exception("The head type must be either 'multi-task' or 'single-head'!")
-
-    #-------tokenize
-    reports_train = train_df.text.to_list()
-    reports_test = test_df.text.to_list()
-    reports_val   = val_df.text.to_list()
-   
-    train = tokenizer(reports_train, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-    test = tokenizer(reports_test, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-    val = tokenizer(reports_val, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-    
-    #-------create dataloarders
-    train_dataloader      = create_dataLoader(train, train_labels, batch_size)
-    validation_dataloader = create_dataLoader(val, val_labels, batch_size)
-    test_dataloader       = create_dataLoader(test, test_labels, batch_size)
-
+    train_dataloader, validation_dataloader, test_dataloader, num_labels = preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, head_type, head_args, num_labels, model_cfg, batch_size)
     return train_dataloader, validation_dataloader, test_dataloader, num_labels
+
+def _setup_dataset_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold):
+
+    train_df_orig, test_df, labels, num_labels = ohsumed_dataset_preprocess(dataset_args)
+
+    fold_i =0
+    stratifier = IterativeStratification(n_splits=fold, order=2)
+    for train_indexes, val_indexes in stratifier.split(train_df_orig['text'], np.array(train_df_orig['labels'].to_list())):
+        fold_i += 1
+        print(f"[dataset] ======================================= Fold {fold_i} =======================================")
+
+        val_df = train_df_orig.iloc[val_indexes,:]
+        train_df = train_df_orig.iloc[train_indexes,:]
+
+        train_df.reset_index(drop=True, inplace=True)
+        test_df.reset_index(drop=True, inplace=True)
+        val_df.reset_index(drop=True, inplace=True)
+
+        train_dataloader, validation_dataloader, test_dataloader, num_labels = preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, head_type, head_args, num_labels, model_cfg, batch_size, fold_i)
+        yield train_dataloader, validation_dataloader, test_dataloader, num_labels
+
+# def _setup_dataset(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg):
+    
+#     train_df_orig, test_df, labels, num_labels = ohsumed_dataset_preprocess(dataset_args)
+
+#     train_indexes, val_indexes = iterative_train_test_split(train_df['text'], np.array(train_df['labels'].to_list()), 0.15)
+
+#     val_df = train_df.iloc[val_indexes,:]
+#     train_df = train_df.iloc[train_indexes,:]
+
+#     train_df.reset_index(drop=True, inplace=True)
+#     test_df.reset_index(drop=True, inplace=True)
+#     val_df.reset_index(drop=True, inplace=True)
+
+#     print('Train: ', len(train_df))
+#     mlflowLogger.store_param("dataset.train.len", len(train_df))
+#     print('Test: ', len(test_df))
+#     mlflowLogger.store_param("dataset.test.len", len(test_df))
+#     print('Val: ', len(val_df))
+#     mlflowLogger.store_param("dataset.val.len", len(val_df))
+
+#     #-------table for train, test,val counts
+#     # label_counts_total = np.array(df.labels.to_list()).sum(axis=0)
+#     label_counts_train = np.array(train_df.labels.to_list()).sum(axis=0)
+#     label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
+#     label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
+
+#     pretty=PrettyTable()
+#     label_counts_total = []
+#     pretty.field_names = ['Label', 'total', 'train', 'test','val']
+#     for pathology, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_train, label_counts_test, label_counts_val):
+#         cnt_total = cnt_train + cnt_test + cnt_val
+#         label_counts_total.append(cnt_total)
+#         pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
+#     print(pretty)
+
+#     # pretty=PrettyTable()
+#     # pretty.field_names = ['Label', 'total', 'train', 'test','val']
+#     # for pathology, cnt_total, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_total, label_counts_train, label_counts_test, label_counts_val):
+#     #     pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
+#     # print(pretty)
+
+#     #-------check for multi-head, single or multi-task
+#     if head_type =="multi-task":
+#         #check the type:   
+#         if head_args['type'] == "givenset":
+#             heads_index = head_args["heads_index"]
+
+#         elif head_args['type'] == "KDE":
+#             heads_index = KDE(label_counts_total, head_args['bandwidth'])
+
+#         elif head_args['type'] == "meanshift":
+#              heads_index = meanshift(label_counts_total)
+
+#         elif head_args['type'] == "kmediod-label":
+#             print("[  dataset  ] kmediod-label grouping starts!")
+#             # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+#             model = configuration.setup_model(model_cfg)(num_labels, "singlehead_cls")
+#             embds = get_all_label_embds(labels, tokenizer, model)
+#             if "elbow" in head_args.keys():
+#                 plot_elbow_method(embds,head_args['elbow'])
+#             heads_index = grouping_kmediod(embds, head_args['clusters'])
+#             del model
+
+#         elif head_args['type'] == "kmediod-labeldesc":
+#             print("[  dataset  ] kmediod-label description grouping starts!")
+#             # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+#             model = configuration.setup_model(model_cfg)(num_labels, "singlehead_cls")
+#             labels_list = [labels_dict[label] for label in labels]
+#             # list(labels_dict.values()
+#             embds = get_all_label_embds(labels_list, tokenizer, model)
+#             if "elbow" in head_args.keys():
+#                 plot_elbow_method(embds,head_args['elbow'])
+#             heads_index = grouping_kmediod(embds, head_args['clusters'])
+#             del model
+
+#         mlflowLogger.store_param("heads_index", heads_index)
+#         padded_heads = padding_heads(heads_index)
+        
+#         #--group the heads
+#         train_df = group_heads(padded_heads, train_df)
+#         test_df = group_heads(padded_heads, test_df)
+#         val_df = group_heads(padded_heads, val_df)
+
+#         #--prepare labels for dataloader
+#         train_labels = torch.from_numpy(np.array(train_df.head_labels.to_list()))
+#         test_labels = torch.from_numpy(np.array(test_df.head_labels.to_list()))
+#         val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
+
+#     elif head_type =="single-head":
+#         #--prepare labels for dataloader
+#         train_labels = torch.from_numpy(np.array(train_df.labels.to_list()))
+#         test_labels = torch.from_numpy(np.array(test_df.labels.to_list()))
+#         val_labels = torch.from_numpy(np.array(val_df.labels.to_list()))
+#     else:
+#         raise Exception("The head type must be either 'multi-task' or 'single-head'!")
+
+#     #-------tokenize
+#     reports_train = train_df.text.to_list()
+#     reports_test = test_df.text.to_list()
+#     reports_val   = val_df.text.to_list()
+   
+#     train = tokenizer(reports_train, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
+#     test = tokenizer(reports_test, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
+#     val = tokenizer(reports_val, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
+    
+#     #-------create dataloarders
+#     train_dataloader      = create_dataLoader(train, train_labels, batch_size)
+#     validation_dataloader = create_dataLoader(val, val_labels, batch_size)
+#     test_dataloader       = create_dataLoader(test, test_labels, batch_size)
+
+#     return train_dataloader, validation_dataloader, test_dataloader, num_labels
 
 #============labels================
 labels_C_to_title = {
@@ -240,27 +289,27 @@ labels_C_to_title = {
     }
 
 labels_dict={
-    'Bacterial Infections and Mycoses': "Bacterial Infections and Mycoses. A bacterial infection is a proliferation of a harmful strain of bacteria on or inside the body. Mycoses are common and a variety of environmental and physiological conditions can contribute to the development of fungal diseases. Inhalation of fungal spores or localized colonization of the skin may initiate persistent infections; therefore, mycoses often start in the lungs or on the skin.",
-    'Virus Diseases': "Virus Diseases. Viruses cause familiar infectious diseases such as the common cold, flu and warts. ", 
-    'Parasitic Diseases': "A parasitic disease, also known as parasitosis, is an infectious disease caused or transmitted by a parasite. Many parasites do not cause diseases as it may eventually lead to death of both organism and host. Parasites infecting human beings are called human parasites.", 
-    'Neoplasms': "A neoplasm is an abnormal growth of cells, also known as a tumor. Neoplastic diseases are conditions that cause tumor growth — both benign and malignant. Benign tumors are noncancerous growths.",
-    'Musculoskeletal Diseases': "Musculoskeletal disorders (MSD) are injuries or disorders that affect the human body’s movement or musculoskeletal system. such as muscles, nerves, tendons, joints, cartilage, and spinal discs. ",
-    'Digestive System Diseases': "Digestive System Diseases. A digestive disease is any health problem that occurs in the digestive tract. Conditions may range from mild to serious. Some common problems include heartburn, cancer, irritable bowel syndrome, and lactose intolerance. Other digestive diseases include: Gallstones, cholecystitis, and cholangitis.", 
-    'Stomatognathic Diseases': "General or unspecified diseases of the stomatognathic system, comprising the mouth, teeth, jaws, and pharynx. Synonym(s): Dental Diseases, Mouth and Tooth Diseases, Dental Disease, Disease, Dental, Narrow term(s): Jaw Diseases.", 
-    'Respiratory Tract Diseases': "Respiratory Tract Diseases. A type of disease that affects the lungs and other parts of the respiratory system. Respiratory diseases may be caused by infection, by smoking tobacco, or by breathing in secondhand tobacco smoke, radon, asbestos, or other forms of air pollution.", 
-    'Otorhinolaryngologic Diseases': "Otorhinolaryngologic Diseases is a branch of medicine that deals with diagnosis and treatment of diseases of the ear, nose, and throat.", 
-    'Nervous System Diseases': "Nervous system diseases, any of the diseases or disorders that affect the functioning of the human nervous system. Everything that humans sense, consider, and effect and all the unlearned reflexes of the body depend on the functioning of the nervous system.", 
-    'Eye Diseases': "Eye Diseases are any disease of the eye or cornea. macular degeneration. eye disease caused by degeneration of the cells of the macula lutea and results in blurred vision; can cause blindness. retinopathy. a disease of the retina that can result in loss of vision.", 
-    'Urologic and Male Genital Diseases': "Urologic and Male Genital Diseases. A male genital disease is a condition that affects the male reproductive system. An example is orchitis.",
-    'Female Genital Diseases and Pregnancy Complications': "Female Genital Diseases and Pregnancy Complications, Vaginal Diseases, Complications of pregnancy are health problems that occur during pregnancy. They can involve the mother's health, the baby's health, or both. Some women have health problems that arise during pregnancy, and other women have health problems before they become pregnant that could lead to complications.",
-    'Cardiovascular Diseases': "Cardiovascular disease (CVD) is the name for the group of disorders of heart and blood vessels, and include: hypertension (high blood pressure) coronary heart disease (heart attack) cerebrovascular disease (stroke)", 
-    'Hemic and Lymphatic Diseases': "Hemic and Lymphatic Diseases. Hemic diseases include disorders involving the formed elements (e.g., Erythrocyte Aggregation, Intravascular) and chemical components (e.g., BLOOD PROTEIN DISORDERS); lymphatic diseases include disorders relating to lymph, lymph nodes, and lymphocytes.", 
-    'Neonatal Diseases and Abnormalities': "Neonatal Diseases and Abnormalities. Diseases existing at birth and often before birth, or that develop during the first month of life (Infant, Newborn, Diseases), regardless of causation." , 
-    'Skin and Connective Tissue Diseases': "A connective tissue disease is any disease that affects the parts of the body that connect the structures of the body together. Connective tissues are made up of two proteins: collagen and elastin.", 
-    'Nutritional and Metabolic Diseases': "Nutritional and Metabolic Diseases. A metabolic disorder occurs when the metabolism process fails and causes the body to have either too much or too little of the essential substances needed to stay healthy. Our bodies are very sensitive to errors in metabolism. The body must have amino acids and many types of proteins to perform all of its functions.", 
-    'Endocrine Diseases': "Endocrine Diseases. Endocrine disorders are diseases related to the endocrine glands of the body. The endocrine system produces hormones, which are chemical signals sent out, or secreted, through the bloodstream.", 
-    'Immunologic Diseases': "Immunologic Diseases. Immunological disorders are diseases or conditions caused by a dysfunction of the immune system and include allergy, asthma, autoimmune diseases, autoinflammatory syndromes and immunological deficiency syndromes.", 
-    'Disorders of Environmental Origin': "Disorders of Environmental Origin. Disorders caused by external forces rather than by physiologic dysfunction or by pathogens.  ", 
-    'Animal Diseases': "Animal diseases, an impairment of the normal state of an animal that interrupts or modifies its vital functions.", 
-    'Pathological Conditions, Signs and Symptoms' : "Pathological Conditions, Signs and Symptoms. Abnormal anatomical or physiological conditions and objective or subjective manifestations of disease, not classified as disease or syndrome."
+    'C01': "Bacterial Infections and Mycoses. A bacterial infection is a proliferation of a harmful strain of bacteria on or inside the body. Mycoses are common and a variety of environmental and physiological conditions can contribute to the development of fungal diseases. Inhalation of fungal spores or localized colonization of the skin may initiate persistent infections; therefore, mycoses often start in the lungs or on the skin.",
+    'C02': "Virus Diseases. Viruses cause familiar infectious diseases such as the common cold, flu and warts. ", 
+    'C03': "A parasitic disease, also known as parasitosis, is an infectious disease caused or transmitted by a parasite. Many parasites do not cause diseases as it may eventually lead to death of both organism and host. Parasites infecting human beings are called human parasites.", 
+    'C04': "A neoplasm is an abnormal growth of cells, also known as a tumor. Neoplastic diseases are conditions that cause tumor growth — both benign and malignant. Benign tumors are noncancerous growths.",
+    'C05': "Musculoskeletal disorders (MSD) are injuries or disorders that affect the human body’s movement or musculoskeletal system. such as muscles, nerves, tendons, joints, cartilage, and spinal discs. ",
+    'C06': "Digestive System Diseases. A digestive disease is any health problem that occurs in the digestive tract. Conditions may range from mild to serious. Some common problems include heartburn, cancer, irritable bowel syndrome, and lactose intolerance. Other digestive diseases include: Gallstones, cholecystitis, and cholangitis.", 
+    'C07': "General or unspecified diseases of the stomatognathic system, comprising the mouth, teeth, jaws, and pharynx. Synonym(s): Dental Diseases, Mouth and Tooth Diseases, Dental Disease, Disease, Dental, Narrow term(s): Jaw Diseases.", 
+    'C08': "Respiratory Tract Diseases. A type of disease that affects the lungs and other parts of the respiratory system. Respiratory diseases may be caused by infection, by smoking tobacco, or by breathing in secondhand tobacco smoke, radon, asbestos, or other forms of air pollution.", 
+    'C09': "Otorhinolaryngologic Diseases is a branch of medicine that deals with diagnosis and treatment of diseases of the ear, nose, and throat.", 
+    'C10': "Nervous system diseases, any of the diseases or disorders that affect the functioning of the human nervous system. Everything that humans sense, consider, and effect and all the unlearned reflexes of the body depend on the functioning of the nervous system.", 
+    'C11': "Eye Diseases are any disease of the eye or cornea. macular degeneration. eye disease caused by degeneration of the cells of the macula lutea and results in blurred vision; can cause blindness. retinopathy. a disease of the retina that can result in loss of vision.", 
+    'C12': "Urologic and Male Genital Diseases. A male genital disease is a condition that affects the male reproductive system. An example is orchitis.",
+    'C13': "Female Genital Diseases and Pregnancy Complications, Vaginal Diseases, Complications of pregnancy are health problems that occur during pregnancy. They can involve the mother's health, the baby's health, or both. Some women have health problems that arise during pregnancy, and other women have health problems before they become pregnant that could lead to complications.",
+    'C14': "Cardiovascular disease (CVD) is the name for the group of disorders of heart and blood vessels, and include: hypertension (high blood pressure) coronary heart disease (heart attack) cerebrovascular disease (stroke)", 
+    'C15': "Hemic and Lymphatic Diseases. Hemic diseases include disorders involving the formed elements (e.g., Erythrocyte Aggregation, Intravascular) and chemical components (e.g., BLOOD PROTEIN DISORDERS); lymphatic diseases include disorders relating to lymph, lymph nodes, and lymphocytes.", 
+    'C16': "Neonatal Diseases and Abnormalities. Diseases existing at birth and often before birth, or that develop during the first month of life (Infant, Newborn, Diseases), regardless of causation." , 
+    'C17': "A connective tissue disease is any disease that affects the parts of the body that connect the structures of the body together. Connective tissues are made up of two proteins: collagen and elastin.", 
+    'C18': "Nutritional and Metabolic Diseases. A metabolic disorder occurs when the metabolism process fails and causes the body to have either too much or too little of the essential substances needed to stay healthy. Our bodies are very sensitive to errors in metabolism. The body must have amino acids and many types of proteins to perform all of its functions.", 
+    'C19': "Endocrine Diseases. Endocrine disorders are diseases related to the endocrine glands of the body. The endocrine system produces hormones, which are chemical signals sent out, or secreted, through the bloodstream.", 
+    'C20': "Immunologic Diseases. Immunological disorders are diseases or conditions caused by a dysfunction of the immune system and include allergy, asthma, autoimmune diseases, autoinflammatory syndromes and immunological deficiency syndromes.", 
+    'C21': "Disorders of Environmental Origin. Disorders caused by external forces rather than by physiologic dysfunction or by pathogens.  ", 
+    'C22': "Animal diseases, an impairment of the normal state of an animal that interrupts or modifies its vital functions.", 
+    'C23' : "Pathological Conditions, Signs and Symptoms. Abnormal anatomical or physiological conditions and objective or subjective manifestations of disease, not classified as disease or syndrome."
 }
