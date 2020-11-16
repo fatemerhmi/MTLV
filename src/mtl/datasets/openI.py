@@ -325,7 +325,7 @@ def openI_dataset_preprocess(dataset_args):
         
         return train_df, test_df, labels
 
-def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg): 
+def _setup_dataset(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg): 
     
     train_df_orig, test_df, labels, num_labels = openI_dataset_preprocess(dataset_args)
 
@@ -340,7 +340,7 @@ def _setup_datasets(dataset_name, dataset_args, tokenizer, tokenizer_args, head_
     train_dataloader, validation_dataloader, test_dataloader, num_labels = preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, head_type, head_args, num_labels, model_cfg, batch_size)
     return train_dataloader, validation_dataloader, test_dataloader, num_labels
 
-def _setup_datasets_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold):
+def _setup_dataset_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold):
 
     train_df_orig, test_df, labels, num_labels = openI_dataset_preprocess(dataset_args)
 
@@ -359,7 +359,6 @@ def _setup_datasets_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, he
 
         train_dataloader, validation_dataloader, test_dataloader, num_labels = preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, head_type, head_args, num_labels, model_cfg, batch_size, fold_i)
         yield train_dataloader, validation_dataloader, test_dataloader, num_labels
-
 
 labels_dict={
     'Airspace Disease': "Airspace disease can be acute or chronic and commonly present as consolidation or ground-glass opacity on chest imaging. Consolidation or ground-glass opacity occurs when alveolar air is replaced by fluid, pus, blood, cells, or other material.", 
