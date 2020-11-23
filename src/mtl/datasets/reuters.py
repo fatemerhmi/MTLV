@@ -32,6 +32,7 @@ def reuters_dataset_preprocess(dataset_args):
 
         #--------loading and storing labels to mlflow
         labels = np.load(f"{DATA_DIR}/{dataset_args['data_path']}/labels.npy")
+        labels = list(labels)
         num_labels = len(labels)
         mlflowLogger.store_param("col_names", labels)
         mlflowLogger.store_param("num_labels", num_labels)
