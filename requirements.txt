@@ -1,9 +1,12 @@
-pandas
 mlflow
 ipdb
+numpy
 tqdm
-pyunpack
+pandas
 scikit-multilearn
 nltk
 scikit-learn-extra
 autocorrect
+pyunpack
+transformers
+pytorch
