@@ -104,6 +104,8 @@ def reuters_dataset_preprocess(dataset_args):
         test_df_tosave.to_csv(f'{DATA_DIR}/reuters/reuters_test.csv', index=False)
         del test_df_tosave
 
+        return train_df_orig, test_df, labels, num_labels
+
 def _setup_dataset(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg, training_cv = False, fold = 2): 
     train_df_orig, test_df, labels, num_labels = reuters_dataset_preprocess(dataset_args)
 
