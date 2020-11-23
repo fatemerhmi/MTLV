@@ -29,6 +29,12 @@ This will initialize your local configuration file
 `python3 src/main.py run --config src/mtl/config/openI_1layer.yml`      
 `python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
 
+## see the results in mlflow:
+1. Server: `source env/bin/activate`
+2. Server: `mlflow ui -h $(hostname -f) -p 5000`
+3. Local: 
+
+
 ### Model configuration:
 Download any of the [BioBERT](https://github.com/dmis-lab/biobert) versions bellow and locate them in `\model_wieghts` directory. Then run the script.sh script that is already located in `\model_wieghts` to convert the tensorflow weights to pytorch weights. After running this script, pytorch_model.bin is added to the same directory and the library will automatically use it when the model name is indicated in config files. 
 
