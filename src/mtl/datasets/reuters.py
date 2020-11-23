@@ -22,16 +22,16 @@ def reuters_dataset_preprocess(dataset_args):
     if os.path.exists(f"{DATA_DIR}/reuters"):
         #--------load dataframe
         print("[  dataset  ] reuters directory already exists.")
-        train_df_orig = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/reuters_train.csv'")
+        train_df_orig = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/reuters_train.csv")
         train_df_orig['labels'] = train_df_orig.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
 
-        test_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/reuters_test.csv'")
+        test_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/reuters_test.csv")
         test_df['labels'] = test_df.apply(lambda row: np.array(ast.literal_eval(row['labels'])), axis=1)
 
         mlflowLogger.store_param("dataset.len", len(train_df_orig)+len(test_df))
 
         #--------loading and storing labels to mlflow
-        labels = np.load(f"{DATA_DIR}/reuters/labels.npy")
+        labels = np.load(f"{DATA_DIR}/{dataset_args['data_path']}/labels.npy")
         num_labels = len(labels)
         mlflowLogger.store_param("col_names", labels)
         mlflowLogger.store_param("num_labels", num_labels)
@@ -39,7 +39,7 @@ def reuters_dataset_preprocess(dataset_args):
         return train_df_orig, test_df, labels, num_labels
 
     else:
-        os.makedirs(f"{DATA_DIR}/reuters")
+        os.makedirs(f"{DATA_DIR}/{dataset_args['data_path']}")
         nltk.download('reuters')
 
         train_df_orig = pd.DataFrame(columns=["id", "text", "labels"])
