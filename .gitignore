@@ -4,10 +4,14 @@ findings_frequency.tex
 outputs/
 runs/
 model_weights/bio**
+model_weights/bert**
 model_weights/.**
+
 mlruns/
 artifacts/
 .vscode/
+
+blg*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
