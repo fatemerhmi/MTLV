@@ -210,33 +210,58 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
 
 def bert_base_uncased(num_labels, training_type, device='gpu'):
     MODEL_PATH = "model_weights/bert-base-uncased"
-    if training_type == "singlehead_cls":
-        # model =  BertCLS.from_pretrained('bert-base-uncased')
-        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
-        model.embedding_size = model.hidden_size_BertCLS
+    if not os.path.exists(MODEL_PATH):
+        if training_type == "singlehead_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained('bert-base-uncased', num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
 
-    elif training_type == "MTL_cls":
-        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
-        model.embedding_size = model.hidden_size_BertCLS
+        elif training_type == "MTL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-uncased', num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
 
-    elif training_type == "emb_cls":
-        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+    
+    else:
+        if training_type == "singlehead_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "MTL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
 
     return model
 
 def bert_base_cased(num_labels, training_type, device='gpu'):
     MODEL_PATH = "model_weights/bert-base-cased"
-    if training_type == "singlehead_cls":
-        # model =  BertCLS.from_pretrained('bert-base-uncased')
-        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
-        model.embedding_size = model.hidden_size_BertCLS
-        
-    elif training_type == "MTL_cls":
-        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
-        model.embedding_size = model.hidden_size_BertCLS
+    if not os.path.exists(MODEL_PATH):
+        if training_type == "singlehead_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained('bert-base-cased', num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
 
-    elif training_type == "emb_cls":
-        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+        elif training_type == "MTL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-cased', num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained('bert-base-cased', return_dict=True)
+    
+    else:
+        if training_type == "singlehead_cls":
+            # model =  BertCLS.from_pretrained('bert-base-uncased')
+            model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+            
+        elif training_type == "MTL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
 
     return model
 
