@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: reuters_experiments
-  run_name: signlehead_bert
+  run_name: signlehead_bert-base-cased_e8_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -8,20 +8,20 @@ dataset:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
     data_path: reuters
-    # split_path: openI/cheXpertLabels
     use_data_loader: True
 
 model: 
   bert:
-    model_name: bert-base-uncased
-    freeze: True
+    model_name: bert-base-cased
+    freeze: False #True
     
 training:
-  # type: multihead_cls
   type: singlehead_cls
-  epoch : 5
+  epoch : 8
   batch_size : 16
   use_cuda : True
+  cv : True # False
+  fold : 5
 
 head: 
   single-head:
@@ -36,10 +36,10 @@ head:
 
 tokenizer:
   bert:
-    name: bert_base_uncased
+    name: bert_base_cased
     padding: max_length    # to pad to the longest sequence in the batch
     truncation: True  # truncate to a maximum length specified by the max_length
-    max_length : 128
+    max_length : 512
 
 optimizer:
   adam:

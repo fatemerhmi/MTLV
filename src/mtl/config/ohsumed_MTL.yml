@@ -38,7 +38,7 @@ tokenizer:
     name: bert_base_uncased
     padding: max_length    # to pad to the longest sequence in the batch
     truncation: True  # truncate to a maximum length specified by the max_length
-    max_length : 128
+    max_length : 512
 
 optimizer:
   adam:

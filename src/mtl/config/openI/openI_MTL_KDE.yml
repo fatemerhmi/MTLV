@@ -1,6 +1,7 @@
+#1---------------------MTL_bert-base-uncased_KDE20_sloss_e15----------------------
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MTL_bert-base-uncased_KDE10_sloss_e15_cv
+  run_name: MTL_bert-base-uncased_KDE20_sloss_e15
   tracking_uri: mlruns
 
 dataset: 
@@ -21,14 +22,14 @@ training:
   epoch : 15
   batch_size : 16
   use_cuda : True
-  cv : True # False
-  fold : 5
+  # cv : True # False
+  # fold : 5
 
 head: 
   multi-task:
     heads: MultiLabelCLS
     type: KDE #kmediod-labeldesc  # givenset meanshift KDE kmediod-label, kmediod-labeldesc 
-    bandwidth: 10
+    bandwidth: 20
     # elbow: 7
     # clusters: 4
     # count: 4
@@ -53,3 +54,4 @@ loss:
 #   type: weightedsum # weightedavg weightedsum 
 #   weights: [0.30, 0.30, 0.20, 0.20]
 #   weights: [0.56, 0.15, 0.19, 0.10]
+

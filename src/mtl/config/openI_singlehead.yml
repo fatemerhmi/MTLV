@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: signlehead_bert_e10
+  run_name: signlehead_BioBERT-Basev1-0-PM_e10_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -13,25 +13,24 @@ dataset:
 
 model: 
   bert:
-    model_name: BioBERT-Basev1-0-PM-PMC # bert-base-uncased
+    model_name: BioBERT-Basev1-0-PM #BioBERT-Basev1-0-PMC #BioBERT-Basev1-1 #BioBERT-Basev1-0-PM-PMC # bert-base-uncased
     freeze: False
 
 training:
   type: singlehead_cls
-  epoch : 2
+  epoch : 10
   batch_size : 16
   use_cuda : True
   cv : True # False
-  fold : 3
+  fold : 5
 
 head: 
   single-head:
     heads: MultiLabelCLS
 
-
 tokenizer:
   bert:
-    name: bert_base_cased
+    name: bert_base_cased #bert_base_cased
     padding: max_length    # to pad to the longest sequence in the batch
     truncation: True  # truncate to a maximum length specified by the max_length
     max_length : 128

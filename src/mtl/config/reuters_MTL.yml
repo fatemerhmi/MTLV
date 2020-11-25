@@ -1,14 +1,13 @@
 mlflow:
-  experiment_name: OpenI_experiments
+  experiment_name: reuters_experiments
   run_name: MTL_bert-base-uncased_KDE10_sloss_e15_cv
   tracking_uri: mlruns
 
 dataset: 
-  openI:
+  reuters:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
-    data_path: OpenI
-    # split_path: openI/cheXpertLabels
+    data_path: reuters
     use_data_loader: True
 
 model: 
@@ -21,8 +20,8 @@ training:
   epoch : 15
   batch_size : 16
   use_cuda : True
-  cv : True # False
-  fold : 5
+  # cv : True # False
+  # fold : 5
 
 head: 
   multi-task:
