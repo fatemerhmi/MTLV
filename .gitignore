@@ -10,6 +10,9 @@ model_weights/.**
 mlruns/
 artifacts/
 .vscode/
+setup_cc*
+req1.txt
+req2.txt
 
 blg*
 
