@@ -185,7 +185,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         #log percision, recall, f1 for each label
         for indx, _label in enumerate(new_col_names_order):
             #index 2 becuz it has percision, recall, f1
-            mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
+            if fold_i == None: mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e)  #else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
 
         true_labels_each_head = np.array(true_labels_each_head)
         pred_labels_each_head = np.array(pred_labels_each_head)
@@ -375,7 +375,7 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
         #log percision, recall, f1 for each label
         for indx, _label in enumerate(col_names): 
             #index 2 becuz it has 0:percision, 1:recall, 2:f1
-            mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
+            if fold_i == None: mlflowLogger.store_metric(f"validation.Label.{_label}.f1", prf[2][indx], e)  #else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
 
     #============test=============
     # Put model in evaluation mode to evaluate loss on the validation set
