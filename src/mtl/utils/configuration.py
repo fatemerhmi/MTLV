@@ -152,7 +152,7 @@ def setup_head(head_cfg):
 def load_config(config_file):
 
     default_config = {
-        'experiment_name': "MTL_experiment",
+        'experiment_name': "experiment",
     }
 
     with open(config_file, 'r') as f:
