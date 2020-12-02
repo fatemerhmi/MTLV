@@ -1,0 +1,41 @@
+mlflow:
+  experiment_name: OpenI_experiments
+  run_name: signlehead_bert-base-uncased_e12_cv
+  tracking_uri: mlruns
+
+dataset: 
+  openI:
+    root: ./data
+    data_split: True # True: train, test | False: train, test, val
+    data_path: OpenI
+    # split_path: openI/cheXpertLabels
+    use_data_loader: True
+
+model: 
+  bert:
+    model_name: bert-base-uncased #BioBERT-Basev1-0-PM #BioBERT-Basev1-0-PMC #BioBERT-Basev1-1 #BioBERT-Basev1-0-PM-PMC # bert-base-uncased
+    freeze: False
+
+training:
+  type: singlehead_cls
+  epoch : 12
+  batch_size : 16
+  use_cuda : True
+  cv : True # False
+  fold : 5
+
+head: 
+  single-head:
+    heads: MultiLabelCLS
+
+tokenizer:
+  bert:
+    name: bert_base_uncased #bert_base_cased
+    padding: max_length    # to pad to the longest sequence in the batch
+    truncation: True  # truncate to a maximum length specified by the max_length
+    max_length : 128
+
+optimizer:
+  adam:
+    name: AdamW
+    lr: 0.00002

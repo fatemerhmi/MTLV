@@ -1,7 +1,6 @@
-#1---------------------MTL_bert-base-uncased_KDE20_sloss_e15----------------------
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MTL_bert-base-uncased_KDE20_sloss_e15
+  run_name: MTL_bert-base-uncased_kmedoid_c3_wloss_a_e27_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -19,19 +18,19 @@ model:
     
 training:
   type: MTL_cls
-  epoch : 15
+  epoch : 27
   batch_size : 16
   use_cuda : True
-  # cv : True # False
-  # fold : 5
+  cv : True # False
+  fold : 5
 
 head: 
   multi-task:
     heads: MultiLabelCLS
-    type: KDE #kmediod-labeldesc  # givenset meanshift KDE kmediod-label, kmediod-labeldesc 
-    bandwidth: 20
-    # elbow: 7
-    # clusters: 4
+    type: kmediod-label #kmediod-labeldesc givenset meanshift KDE kmediod-label, kmediod-labeldesc 
+    # bandwidth: 20
+    elbow: 8
+    clusters: 3
     # count: 4
     # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
 
@@ -40,7 +39,7 @@ tokenizer:
     name:  bert_base_uncased # bert_base_uncased
     padding: max_length    # to pad to the longest sequence in the batch
     truncation: True  # truncate to a maximum length specified by the max_length
-    max_length : 512
+    max_length : 128
 
 optimizer:
   adam:
@@ -48,7 +47,7 @@ optimizer:
     lr: 0.00002
 
 loss:
-  type: sumloss #weighted_lossp_avg  #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
+  type: weighted_lossp_avg #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
 
 # loss:
 #   type: weightedsum # weightedavg weightedsum 

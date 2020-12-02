@@ -1,0 +1,56 @@
+mlflow:
+  experiment_name: OpenI_experiments
+  run_name: MTL_bert-base-uncased_meanshift_wloss_a_e22_cv
+  tracking_uri: mlruns
+
+dataset: 
+  openI:
+    root: ./data
+    data_split: True # True: train, test | False: train, test, val
+    data_path: OpenI
+    # split_path: openI/cheXpertLabels
+    use_data_loader: True
+
+model: 
+  bert:
+    model_name: bert-base-uncased #BioBERT-Basev1-0-PM-PMC # 
+    freeze: False
+    
+training:
+  type: MTL_cls
+  epoch : 25
+  batch_size : 16
+  use_cuda : True
+  cv : True # False
+  fold : 5
+
+head: 
+  multi-task:
+    heads: MultiLabelCLS
+    type: meanshift #kmediod-labeldesc givenset meanshift KDE kmediod-label, kmediod-labeldesc 
+    # bandwidth: 20
+    # elbow: 7
+    # clusters: 4
+    # count: 4
+    # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
+
+tokenizer:
+  bert:
+    name:  bert_base_uncased # bert_base_uncased
+    padding: max_length    # to pad to the longest sequence in the batch
+    truncation: True  # truncate to a maximum length specified by the max_length
+    max_length : 128
+
+optimizer:
+  adam:
+    name: AdamW
+    lr: 0.00002
+
+loss:
+  type: weighted_lossp_avg #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
+
+# loss:
+#   type: weightedsum # weightedavg weightedsum 
+#   weights: [0.30, 0.30, 0.20, 0.20]
+#   weights: [0.56, 0.15, 0.19, 0.10]
+
