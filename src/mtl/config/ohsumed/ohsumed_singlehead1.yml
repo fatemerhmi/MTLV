@@ -1,0 +1,40 @@
+mlflow:
+  experiment_name: ohsumed_experiments
+  run_name: signlehead_bert-base-uncased_e6_cv
+  tracking_uri: mlruns
+
+dataset: 
+  ohsumed:
+    root: ./data
+    data_split: True # True: train, test | False: train, test, val
+    data_path: ohsumed
+    use_data_loader: True
+
+model: 
+  bert:
+    model_name: bert-base-uncased #BioBERT-Basev1-0-PMC #BioBERT-Basev1-0-PM-PMC #BioBERT-Basev1-1 #bert-base-uncased
+    freeze: False
+    
+training:
+  type: singlehead_cls
+  epoch : 6
+  batch_size : 16
+  use_cuda : True
+  cv : True # False
+  fold : 5
+
+head: 
+  single-head:
+    heads: MultiLabelCLS
+
+tokenizer:
+  bert:
+    name: bert_base_uncased
+    padding: max_length    # to pad to the longest sequence in the batch
+    truncation: True  # truncate to a maximum length specified by the max_length
+    max_length : 512
+
+optimizer:
+  adam:
+    name: AdamW
+    lr: 0.00002
