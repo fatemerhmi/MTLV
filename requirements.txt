@@ -10,3 +10,4 @@ autocorrect
 pyunpack
 transformers
 pytorch
+scipy
