@@ -9,7 +9,7 @@ import mtl.utils.logger as mlflowLogger
 from mtl.heads.clsHeads import *
 from mtl.utils.evaluate import *
 
-def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cuda, fold_i = None):
+def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cuda, training_type, fold_i = None):
     #-------config
     training_args = cfg['training']
     cfg_optimizer = cfg['optimizer']
@@ -21,7 +21,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
         print('[  training  ] Running on CPU.')
 
     configuration.log_training_args(training_args)
-    training_type = training_args['type']
+    # training_type = training_args['type']
     epoch = training_args['epoch']
 
     #-------training type:

@@ -360,6 +360,27 @@ def _setup_dataset_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, hea
         train_dataloader, validation_dataloader, test_dataloader, num_labels = preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, head_type, head_args, num_labels, model_cfg, batch_size, fold_i)
         yield train_dataloader, validation_dataloader, test_dataloader, num_labels
 
+def _setup_dataset_ttest(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold):
+
+    train_df_orig, test_df, labels, num_labels = openI_dataset_preprocess(dataset_args)
+
+    fold_i =0
+    stratifier = IterativeStratification(n_splits=fold, order=2)
+    for train_indexes, val_indexes in stratifier.split(train_df_orig['text'], np.array(train_df_orig['labels'].to_list())):
+        fold_i += 1
+        print(f"[dataset] ======================================= Fold {fold_i} =======================================")
+
+        val_df = train_df_orig.iloc[val_indexes,:]
+        train_df = train_df_orig.iloc[train_indexes,:]
+
+        train_df.reset_index(drop=True, inplace=True)
+        test_df.reset_index(drop=True, inplace=True)
+        val_df.reset_index(drop=True, inplace=True)
+
+        train_dataloader_s, validation_dataloader_s, test_dataloader_s, num_labels_s = preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, "single-head", head_args, num_labels, model_cfg, batch_size, fold_i)
+        train_dataloader_mtl, validation_dataloader_mtl, test_dataloader_mtl, num_labels_mtl = preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, "multi-task", head_args, num_labels, model_cfg, batch_size, fold_i)
+        yield train_dataloader_s, validation_dataloader_s, test_dataloader_s, num_labels_s, train_dataloader_mtl, validation_dataloader_mtl, test_dataloader_mtl, num_labels_mtl
+
 labels_dict={
     'Airspace Disease': "Airspace disease can be acute or chronic and commonly present as consolidation or ground-glass opacity on chest imaging. Consolidation or ground-glass opacity occurs when alveolar air is replaced by fluid, pus, blood, cells, or other material.", 
     'Atelectasis': "Atelectasis is a condition in which the airways and air sacs in the lung collapse or do not expand properly. Atelectasis can happen when there is an airway blockage, when pressure outside the lung keeps it from expanding, or when there is not enough surfactant for the lung to expand normally.", 
