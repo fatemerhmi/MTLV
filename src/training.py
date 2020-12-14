@@ -22,10 +22,11 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
 
     configuration.log_training_args(training_args)
     # training_type = training_args['type']
-    epoch = training_args['epoch']
+    # epoch = training_args['epoch']
 
     #-------training type:
     if training_type == "MTL_cls": 
+        epoch = training_args['epoch_mtl']
         cfg_loss = cfg['loss'] 
         print(f"[  training  ] The training type is: Multi-head classification.")
         if fold_i != None:
@@ -34,6 +35,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
         else:
             mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
     elif training_type == "singlehead_cls":
+        epoch = training_args['epoch_s']
         if fold_i != None:
             print(f"[training] Fold {fold_i}")
             test_f1_micro, test_f1_macro, test_acc = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i)

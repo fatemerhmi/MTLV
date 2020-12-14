@@ -18,7 +18,8 @@ model:
     
 training:
   type: ttest #MTL_cls
-  epoch : 27
+  epoch_mtl : 27
+  epoch_s : 17
   batch_size : 16
   use_cuda : True
   # cv : True # False

@@ -87,6 +87,9 @@ def run(config, gpu_id=0):
 
 
         #-------calculate mean and variance of run details------
+        mlflowLogger.store_metric(f"results_MTL", results_MTL)
+        mlflowLogger.store_metric(f"results_singleHead", results_singleHead)
+
         # ttest
         results_MTL = np.array(results_MTL)
         results_singleHead = np.array(results_singleHead)
@@ -105,18 +108,7 @@ def run(config, gpu_id=0):
 
         mlflowLogger.store_metric(f"ttest_f1_wilcoxon_mi", ttest_f1_mi)          
         mlflowLogger.store_metric(f"ttest_f1_wilcoxon_ma", ttest_f1_ma)          
-        mlflowLogger.store_metric(f"ttest_wilcoxon_acc", ttest_acc)          
-
-        # results = np.array(results)
-        # mean    = np.mean(results, axis=0)
-        # mlflowLogger.store_metric(f"test.f1_micro.mean", mean[0])       
-        # mlflowLogger.store_metric(f"test.f1_macro.mean", mean[1])       
-        # mlflowLogger.store_metric(f"test.acc.mean", mean[2])          
-        
-        # std = np.std(results, axis=0)
-        # mlflowLogger.store_metric(f"test.f1_micro.std", std[0])       
-        # mlflowLogger.store_metric(f"test.f1_macro.std", std[1])       
-        # mlflowLogger.store_metric(f"test.acc.std", std[2])          
+        mlflowLogger.store_metric(f"ttest_wilcoxon_acc", ttest_acc)               
         
         mlflowLogger.finish_mlflowrun()
         return
