@@ -88,8 +88,8 @@ def run(config, gpu_id=0):
 
 
         #-------calculate mean and variance of run details------
-        mlflowLogger.store_metric(f"results_MTL", results_MTL)
-        mlflowLogger.store_metric(f"results_singleHead", results_singleHead)
+        # mlflowLogger.store_metric(f"results_MTL", results_MTL)
+        # mlflowLogger.store_metric(f"results_singleHead", results_singleHead)
 
         # ttest
         results_MTL = np.array(results_MTL)
