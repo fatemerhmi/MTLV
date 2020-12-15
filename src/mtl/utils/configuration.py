@@ -172,7 +172,7 @@ def verify_config(config):
         raise Exception(f"Missing key in configuration file. Required keys are: {required_keys}")
     
     # training:
-    training_keys = ['epoch', 'batch_size']
+    training_keys = ['type','batch_size']
     training_type = cfg['training']['type']
     if any(key not in cfg['training'] for key in training_keys):
         raise Exception(f"Missing key in training part. Required keys are: {required_keys}")

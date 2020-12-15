@@ -48,9 +48,10 @@ def run(config, gpu_id=0):
         use_cuda = False
 
     #-------Getting training args
-    epoch = cfg['training']["epoch"]
-    batch_size = cfg['training']["batch_size"]
     training_type = cfg['training']['type']
+    if training_type!="ttest":
+        epoch = cfg['training']["epoch"]
+    batch_size = cfg['training']["batch_size"]
     
     #-------Setup datasets
     if "cv" in cfg['training'].keys():
