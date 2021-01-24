@@ -13,7 +13,6 @@ import torch
 import io
 import ast
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-from transformers import BertModel
 from skmultilearn.model_selection import IterativeStratification
 
 from mtl.datasets.utils import download_from_url, extract_archive, unicode_csv_reader, preprocess, preprocess_cv
