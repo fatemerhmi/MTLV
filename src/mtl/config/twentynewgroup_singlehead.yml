@@ -7,7 +7,7 @@ dataset:
   twentyNewsGroup:
     root: ./data
     data_split: True # True: train, test | False: train, test, val
-    data_path: twentynewsgroup/twentynewsgroup_train.csv
+    data_path: twentynewsgroup
     use_data_loader: True
 
 model: 
@@ -18,7 +18,7 @@ model:
 training:
   # type: MTL_cls
   type: singlehead_cls
-  epoch : 20
+  epoch : 3
   batch_size : 16
   use_cuda : True
   # cv : True # False
@@ -33,7 +33,7 @@ tokenizer:
     name: bert_base_uncased
     padding: max_length    # to pad to the longest sequence in the batch
     truncation: True  # truncate to a maximum length specified by the max_length
-    max_length : 512
+    max_length : 128
 
 optimizer:
   adam:
