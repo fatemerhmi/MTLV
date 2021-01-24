@@ -1,3 +1,7 @@
+import matplotlib
+import seaborn as sns
+import pandas as pd
+from sklearn.datasets import load_digits
 
 import torch
 from scipy import spatial
@@ -60,4 +64,29 @@ def grouping_kmediod(data, n_clusters_):
     #     groupings.append(tmp)
     # for group in groupings:
     #     print(group)
-    return heads_index
+    return heads_index, kmedoids.labels_
+
+def plot_emb_groups(embds, labels, cluster_label):
+
+    digits = load_digits()
+
+    data_X = embds
+    y = cluster_label
+
+    from sklearn.manifold import TSNE
+    tsne = TSNE(n_components=2, random_state=0, n_iter = 3000, perplexity=5)
+
+    tsne_obj= tsne.fit_transform(data_X)
+
+    tsne_df = pd.DataFrame({'X':tsne_obj[:,0],
+                            'Y':tsne_obj[:,1],
+                            'digit':y})
+
+    tsne_plot = sns.scatterplot(x="X", y="Y",
+              hue="digit",
+              palette=None,
+              legend='full',
+              data=tsne_df);            
+    fig = tsne_plot.get_figure()
+    plt.title('TSNE of embds')
+    mlflowLogger.store_pic(fig, 'tsne', 'png')
