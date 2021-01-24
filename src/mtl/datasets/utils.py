@@ -20,7 +20,7 @@ from prettytable import PrettyTable
 
 from mtl.heads.grouping_KDE import *
 from mtl.heads.grouping_meanshift import *
-from mtl.heads.grouping_kmediod import grouping_kmediod, get_all_label_embds, plot_elbow_method
+from mtl.heads.grouping_kmediod import grouping_kmediod, get_all_label_embds, plot_elbow_method, plot_emb_groups
 import mtl.utils.configuration as configuration
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
@@ -275,7 +275,10 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
             embds = get_all_label_embds(labels, tokenizer, model)
             if "elbow" in head_args.keys():
                 plot_elbow_method(embds,head_args['elbow'])
-            heads_index = grouping_kmediod(embds, head_args['clusters'])
+            heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'])
+            if "plot" in head_args.keys():
+                if head_args['plot'] == True:
+                    plot_emb_groups(embds, labels, cluster_label)
             del model
 
         elif head_args['type'] == "kmediod-labeldesc":
@@ -287,7 +290,10 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
             embds = get_all_label_embds(labels_list, tokenizer, model)
             if "elbow" in head_args.keys():
                 plot_elbow_method(embds,head_args['elbow'])
-            heads_index = grouping_kmediod(embds, head_args['clusters'])
+            heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'])
+            if "plot" in head_args.keys():
+                if head_args['plot'] == True:
+                    plot_emb_groups(embds, labels, cluster_label)
             del model
 
         mlflowLogger.store_param("heads_index", heads_index)
