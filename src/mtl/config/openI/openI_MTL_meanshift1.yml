@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MTL_bert-base-uncased_meanshift_wloss_a_e22_cv
+  run_name: MTL_bert-base-uncased_meanshift_wloss_a_e25_cv
   tracking_uri: mlruns
 
 dataset: 

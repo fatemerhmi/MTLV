@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MTL_bert-base-uncased_meanshift_wloss_s_e22_cv
+  run_name: MTL_bert-base-uncased_meanshift_wloss_s_e25_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -18,7 +18,7 @@ model:
     
 training:
   type: MTL_cls
-  epoch : 22
+  epoch : 25
   batch_size : 16
   use_cuda : True
   cv : True # False
@@ -53,4 +53,3 @@ loss:
 #   type: weightedsum # weightedavg weightedsum 
 #   weights: [0.30, 0.30, 0.20, 0.20]
 #   weights: [0.56, 0.15, 0.19, 0.10]
-

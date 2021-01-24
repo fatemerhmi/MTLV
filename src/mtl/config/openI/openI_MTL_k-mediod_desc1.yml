@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MTL_bert-base-uncased_kmedoid_c4_sloss_e27_cv
+  run_name: MTL_bert-base-uncased_kmedoid_ld_c4_wloss_a_e25_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -18,7 +18,7 @@ model:
     
 training:
   type: MTL_cls
-  epoch : 27
+  epoch : 25
   batch_size : 16
   use_cuda : True
   cv : True # False
@@ -27,7 +27,7 @@ training:
 head: 
   multi-task:
     heads: MultiLabelCLS
-    type: kmediod-label #kmediod-labeldesc givenset meanshift KDE kmediod-label, kmediod-labeldesc 
+    type: kmediod-labeldesc # givenset meanshift KDE kmediod-label, kmediod-labeldesc 
     # bandwidth: 20
     elbow: 8
     clusters: 4
@@ -47,7 +47,7 @@ optimizer:
     lr: 0.00002
 
 loss:
-  type: sumloss #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
+  type: weighted_lossp_avg #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
 
 # loss:
 #   type: weightedsum # weightedavg weightedsum 

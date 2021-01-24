@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: reuters_experiments
-  run_name: MTL_bert-base-cased_KDE50_sloss_e10_cv
+  run_name: MTL_bert-base-cased_KDE50_wloss_s_e10_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -46,7 +46,7 @@ optimizer:
     lr: 0.00002
 
 loss:
-  type: sumloss #weighted_lossp_avg  #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
+  type: weighted_lossp_sum #weighted_lossp_avg  #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
 
 # loss:
 #   type: weightedsum # weightedavg weightedsum 
