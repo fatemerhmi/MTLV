@@ -1,6 +1,5 @@
 import pandas as pd
 import ast
-from transformers import BertTokenizer, BertForSequenceClassification
 import torch
 import numpy as np
 from scipy import stats
