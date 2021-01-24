@@ -79,8 +79,9 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, t
         raise NameError(f'{tokenizer_name} does not appear in this lists of datasets we support: {available_tokenizers}')
     
     #-------get the tokenizer obj
-    if tokenizer_args['name'] in imported_tokenizer_module.__all__:
-        tokenizer_obj = getattr(imported_tokenizer_module,tokenizer_args['name'])()
+    tokenizer_name_arg = tokenizer_args['name'].replace("-", "_")
+    if tokenizer_name_arg in imported_tokenizer_module.__all__:
+        tokenizer_obj = getattr(imported_tokenizer_module,tokenizer_name_arg)()
         # print(tokenizer_obj)
     else:
         raise NameError(f'{tokenizer_args["name"]} does not appear in this lists of tokenizers we support: {imported_tokenizer_module.__all__}')
