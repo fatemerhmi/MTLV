@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: news_experiments
-  run_name: signlehead_bert-base-uncased_e12_cv
+  run_name: signlehead_bert-base-cased_e20_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -17,7 +17,7 @@ model:
 
 training:
   type: singlehead_cls
-  epoch : 10
+  epoch : 15
   batch_size : 16
   use_cuda : True
   # cv : True # False
