@@ -34,7 +34,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
         print(f"[  training  ] The training type is: Multi-head classification.")
         if fold_i != None:
             print(f"[training] Fold {fold_i}")
-            test_f1_micro, test_f1_macro, test_acc = mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i)
+            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_ = mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i)
         else:
             mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
     elif training_type == "singlehead_cls":
@@ -45,12 +45,12 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
 
         if fold_i != None:
             print(f"[training] Fold {fold_i}")
-            test_f1_micro, test_f1_macro, test_acc = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i)
+            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_ = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i)
         else:
             singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
     
     if fold_i != None:
-        return test_f1_micro, test_f1_macro, test_acc
+        return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_
 
 def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None):
     #-------get params from mlflow
@@ -186,11 +186,20 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
 
         true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
         pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
-        val_f1_micro, val_f1_macro, val_acc, LRAP, prf = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
 
+        val_f1_micro, val_f1_macro, val_hamming_loss_, val_hamming_score_, val_subset_accuracy, prf = calculate_scores(pred_labels_all_head, true_labels_all_head)
         mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_micro", val_f1_micro, e)
         mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_macro", val_f1_macro, e)
-        mlflowLogger.store_metric("validation.acc", val_acc, e)           if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.acc", val_acc, e)
+        mlflowLogger.store_metric("validation.subset_accuracy", val_subset_accuracy, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.subset_accuracy", val_subset_accuracy, e)
+        mlflowLogger.store_metric("validation.Hamming_score", val_hamming_score_, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Hamming_score", val_hamming_score_, e)
+        mlflowLogger.store_metric("validation.Hamming_loss", val_hamming_loss_, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Hamming_loss", val_hamming_loss_, e)
+
+
+        # val_f1_micro, val_f1_macro, val_acc, LRAP, prf = calculate_f1_acc(pred_labels_all_head, true_labels_all_head)
+
+        # mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_micro", val_f1_micro, e)
+        # mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_macro", val_f1_macro, e)
+        # mlflowLogger.store_metric("validation.acc", val_acc, e)           if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.acc", val_acc, e)
 
         #log percision, recall, f1 for each label
         if fold_i == None:
@@ -209,10 +218,13 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
             i_head_pred_labels = pred_labels_each_head[:,i]
             i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
-            val_head_f1_micro, val_head_f1_macro, val_head_acc, _ , _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
-            mlflowLogger.store_metric(f"validation.headacc.{i}", val_head_acc, e)           if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headacc.{i}", val_head_acc, e)
+            # val_head_f1_micro, val_head_f1_macro, val_head_acc, _ , _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
+            val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy, _ = calculate_scores(i_head_pred_labels, i_head_true_labels)
             mlflowLogger.store_metric(f"validation.headf1_micro.{i}", val_head_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headf1_micro.{i}", val_head_f1_micro, e)
             mlflowLogger.store_metric(f"validation.headf1_macro.{i}", val_head_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headf1_macro.{i}", val_head_f1_macro, e)
+            mlflowLogger.store_metric(f"validation.headHammingLoss.{i}", val_head_hamming_loss_, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headHammingLoss.{i}", val_head_hamming_loss_, e)
+            mlflowLogger.store_metric(f"validation.headHammingScore.{i}", val_head_hamming_score_, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headHammingScore.{i}", val_head_hamming_score_, e)
+            mlflowLogger.store_metric(f"validation.headsubsetAcc.{i}", val_head_subset_accuracy, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.headsubsetAcc.{i}", val_head_subset_accuracy, e)
 
     #============test=============
     # Put model in evaluation mode to evaluate loss on the validation set
@@ -259,14 +271,20 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
     pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
     
-
+    test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_, test_clf_report = calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
+    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_micro", test_f1_micro)
+    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_macro", test_f1_macro)
+    mlflowLogger.store_metric(f"test.subset_accuracy", test_subset_accuracy)  if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.subset_accuracy", test_subset_accuracy) 
+    mlflowLogger.store_metric(f"test.Hamming_loss", test_hamming_loss_)       if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.Hamming_loss", test_hamming_loss_)
+    mlflowLogger.store_metric(f"test.Hamming_score", test_hamming_score_)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.Hamming_score", test_hamming_score_)
+    mlflowLogger.store_artifact(test_clf_report, "test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"test.cls_report.Fold{fold_i}.", "txt")
     
-    test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
-    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro, e)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_micro", test_f1_micro, e)
-    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro, e)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_macro", test_f1_macro, e)
-    mlflowLogger.store_metric(f"test.acc", test_acc, e)               if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.acc", test_acc, e)     
-    mlflowLogger.store_metric(f"test.LRAP", test_LRAP, e)             if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.LRAP", test_LRAP, e)  
-    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"cls_report.Fold{fold_i}", "txt")
+    # test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
+    # mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro, e)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_micro", test_f1_micro, e)
+    # mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro, e)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_macro", test_f1_macro, e)
+    # mlflowLogger.store_metric(f"test.acc", test_acc, e)               if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.acc", test_acc, e)     
+    # mlflowLogger.store_metric(f"test.LRAP", test_LRAP, e)             if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.LRAP", test_LRAP, e)  
+    # mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"cls_report.Fold{fold_i}", "txt")
 
     true_labels_each_head = np.array(true_labels_each_head)
     pred_labels_each_head = np.array(pred_labels_each_head)
@@ -279,16 +297,23 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         i_head_pred_labels = pred_labels_each_head[:,i]
         i_head_pred_labels = torch.cat([item for item in i_head_pred_labels],0).to('cpu').numpy()
 
-        testhead_f1_micro, testhead_f1_macro, testhead_acc, testhead_LRAP, _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
-        mlflowLogger.store_metric(f"test.headf1_micro.{i}", testhead_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_micro.{i}", testhead_f1_micro, e)
-        mlflowLogger.store_metric(f"test.headf1_macro.{i}", testhead_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_macro.{i}", testhead_f1_macro, e)
-        mlflowLogger.store_metric(f"test.headacc.{i}", testhead_acc, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headacc.{i}", testhead_acc, e)
-        mlflowLogger.store_metric(f"test.headLRAP.{i}", testhead_LRAP, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headLRAP.{i}", testhead_LRAP, e)
+        # testhead_f1_micro, testhead_f1_macro, testhead_acc, testhead_LRAP, _ = calculate_f1_acc(i_head_pred_labels, i_head_true_labels)
+        # mlflowLogger.store_metric(f"test.headf1_micro.{i}", testhead_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_micro.{i}", testhead_f1_micro, e)
+        # mlflowLogger.store_metric(f"test.headf1_macro.{i}", testhead_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_macro.{i}", testhead_f1_macro, e)
+        # mlflowLogger.store_metric(f"test.headacc.{i}", testhead_acc, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headacc.{i}", testhead_acc, e)
+        # mlflowLogger.store_metric(f"test.headLRAP.{i}", testhead_LRAP, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headLRAP.{i}", testhead_LRAP, e)
+
+        test_head_f1_micro, test_head_f1_macro, test_head_hamming_loss_, test_head_hamming_score_, test_head_subset_accuracy, _ = calculate_scores(i_head_pred_labels, i_head_true_labels)
+        mlflowLogger.store_metric(f"test.headf1_micro.{i}", test_head_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_micro.{i}", test_head_f1_micro, e)
+        mlflowLogger.store_metric(f"test.headf1_macro.{i}", test_head_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headf1_macro.{i}", test_head_f1_macro, e)
+        mlflowLogger.store_metric(f"test.headHammingLoss.{i}", test_head_hamming_loss_, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headHammingLoss.{i}", test_head_hamming_loss_, e)
+        mlflowLogger.store_metric(f"test.headHammingScore.{i}", test_head_hamming_score_, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headHammingScore.{i}", test_head_hamming_score_, e)
+        mlflowLogger.store_metric(f"test.headsubsetAcc.{i}", test_head_subset_accuracy, e) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.headsubsetAcc.{i}", test_head_subset_accuracy, e)
 
     if fold_i == None: 
         mlflowLogger.finish_mlflowrun()
     if fold_i != None: 
-        return test_f1_micro, test_f1_macro, test_acc
+        return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_
 
 def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i = None):
     #-------get params from mlflow
@@ -377,11 +402,14 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
         true_labels_signlehead = np.concatenate([item.to('cpu').numpy() for item in true_labels_signlehead])
         pred_labels_singlehead = np.concatenate([item.to('cpu').numpy() for item in pred_labels_singlehead])
 
-        val_f1_micro, val_f1_macro, val_acc, _ , prf = calculate_f1_acc(pred_labels_singlehead, true_labels_signlehead)
+        # val_f1_micro, val_f1_macro, val_acc, _ , prf = calculate_f1_acc(pred_labels_singlehead, true_labels_signlehead)
+        val_f1_micro, val_f1_macro, val_hamming_loss_, val_hamming_score_, val_subset_accuracy, prf = calculate_scores(pred_labels_singlehead, true_labels_signlehead)
 
         mlflowLogger.store_metric("validation.f1_micro", val_f1_micro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_micro", val_f1_micro, e)
         mlflowLogger.store_metric("validation.f1_macro", val_f1_macro, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.f1_macro", val_f1_macro, e)
-        mlflowLogger.store_metric("validation.acc", val_acc, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.acc", val_acc, e)
+        mlflowLogger.store_metric("validation.subset_accuracy", val_subset_accuracy, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.subset_accuracy", val_subset_accuracy, e)
+        mlflowLogger.store_metric("validation.Hamming_score", val_hamming_score_, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Hamming_score", val_hamming_score_, e)
+        mlflowLogger.store_metric("validation.Hamming_loss", val_hamming_loss_, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Hamming_loss", val_hamming_loss_, e)
 
         #log percision, recall, f1 for each label
         if fold_i == None:
@@ -411,15 +439,17 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
     true_labels_signlehead = np.concatenate([item.to('cpu').numpy() for item in true_labels_signlehead])
     pred_labels_singlehead = np.concatenate([item.to('cpu').numpy() for item in pred_labels_singlehead])
 
-    test_f1_micro, test_f1_macro, test_acc, test_LRAP, test_clf_report = calculate_f1_acc_test(pred_labels_singlehead, true_labels_signlehead, col_names)
-    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro)        if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_micro", test_f1_micro)
-    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro)        if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_macro", test_f1_macro)
-    mlflowLogger.store_metric(f"test.acc", test_acc)                  if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.acc", test_acc) 
-    mlflowLogger.store_metric(f"test.LRAP", test_LRAP)                if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.LRAP", test_LRAP)
-    mlflowLogger.store_artifact(test_clf_report, "cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"cls_report.Fold{fold_i}.", "txt")
+    test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_, test_clf_report = calculate_f1_acc_test(pred_labels_singlehead, true_labels_signlehead, col_names)
+    
+    mlflowLogger.store_metric(f"test.f1_micro", test_f1_micro) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_micro", test_f1_micro)
+    mlflowLogger.store_metric(f"test.f1_macro", test_f1_macro) if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.f1_macro", test_f1_macro)
+    mlflowLogger.store_metric(f"test.subset_accuracy", test_subset_accuracy)  if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.subset_accuracy", test_subset_accuracy) 
+    mlflowLogger.store_metric(f"test.Hamming_loss", test_hamming_loss_)       if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.Hamming_loss", test_hamming_loss_)
+    mlflowLogger.store_metric(f"test.Hamming_score", test_hamming_score_)     if fold_i == None else mlflowLogger.store_metric(f"test.Fold{fold_i}.Hamming_score", test_hamming_score_)
+    mlflowLogger.store_artifact(test_clf_report, "test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"test.cls_report.Fold{fold_i}.", "txt")
 
     if fold_i !=None: 
-        return test_f1_micro, test_f1_macro, test_acc
+        return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_
     if fold_i == None: 
         mlflowLogger.finish_mlflowrun()
 
