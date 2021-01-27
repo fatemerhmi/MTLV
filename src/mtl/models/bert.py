@@ -99,10 +99,12 @@ class BertCLS_multilabel_singleHead(BertPreTrainedModel):
         logits = self.classifier(pooled_output)
 
         loss = None
-        loss_func = BCEWithLogitsLoss() 
-        # loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-        loss = loss_func(logits.view(-1, self.num_labels), labels.type_as(logits).view(-1, self.num_labels))
-        
+        if labels is not None:
+            # loss_fct = CrossEntropyLoss()
+            # loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            
+            loss_fct = BCEWithLogitsLoss() 
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.type_as(logits).view(-1, self.num_labels))
 
         if not return_dict:
             output = (logits,) + outputs[2:]
