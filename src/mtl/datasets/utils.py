@@ -323,9 +323,60 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
     reports_test = test_df.text.to_list()
     reports_val   = val_df.text.to_list()
 
-    train = tokenizer(reports_train, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-    test = tokenizer(reports_test, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-    val = tokenizer(reports_val, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
+    # inputs = self.tokenizer.encode_plus(
+    #         text,
+    #         None,
+    #         add_special_tokens=True,
+    #         max_length=self.max_len,
+    #         padding='max_length',
+    #         return_token_type_ids=True,
+    #         truncation=True,
+    #     )
+
+
+    # train = tokenizer.encode_plus(reports_train, \
+    #     None, \
+    #     add_special_tokens=True, \
+    #     max_length=tokenizer_args['max_length'], \
+    #     padding=tokenizer_args['padding'], \
+    #     return_token_type_ids=True, \
+    #     truncation=tokenizer_args['truncation'], \
+    #     return_tensors="pt")
+
+    # test = tokenizer.encode_plus(reports_test, \
+    #     None, \
+    #     add_special_tokens=True, \
+    #     max_length=tokenizer_args['max_length'], \
+    #     padding=tokenizer_args['padding'], \
+    #     return_token_type_ids=True, \
+    #     truncation=tokenizer_args['truncation'], \
+    #     return_tensors="pt")
+
+    # val = tokenizer.encode_plus(reports_val, \
+    #     None, \
+    #     add_special_tokens=True, \
+    #     max_length=tokenizer_args['max_length'], \
+    #     padding=tokenizer_args['padding'], \
+    #     return_token_type_ids=True, \
+    #     truncation=tokenizer_args['truncation'], \
+    #     return_tensors="pt")
+
+    train = tokenizer(reports_train, \
+                        padding=tokenizer_args['padding'], \
+                        truncation=tokenizer_args['truncation'], \
+                        max_length=tokenizer_args['max_length'], \
+                        return_tensors="pt")
+
+    test = tokenizer(reports_test, \
+                        padding=tokenizer_args['padding'], \
+                        truncation=tokenizer_args['truncation'], \
+                        max_length=tokenizer_args['max_length'], \
+                        return_tensors="pt")
+    val = tokenizer(reports_val, \
+                        padding=tokenizer_args['padding'], \
+                        truncation=tokenizer_args['truncation'], \
+                        max_length=tokenizer_args['max_length'], \
+                        return_tensors="pt")
     
     #-------create dataloarders
     train_dataloader      = create_dataLoader(train, train_labels, batch_size)
