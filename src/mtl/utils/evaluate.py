@@ -33,7 +33,7 @@ def calculate_scores(outputs, targets):
     hamming_score_ = round(hamming_score_*100,2)
 
     subset_accuracy = metrics.accuracy_score(targets, outputs)
-    subset_accuracy = round(accuracy*100,2)
+    subset_accuracy = round(subset_accuracy*100,2)
 
     prf = precision_recall_fscore_support(targets, outputs, average=None)
 
@@ -51,7 +51,7 @@ def calculate_f1_acc_test(pred_labels, true_labels, test_label_cols, threshold =
     f1_score_macro = round(f1_score_macro*100,2)
 
     subset_accuracy = metrics.accuracy_score(target, pred)
-    subset_accuracy = round(accuracy*100,2)
+    subset_accuracy = round(subset_accuracy*100,2)
     
     hamming_loss_ = metrics.hamming_loss(target, pred)
     hamming_loss_ = round(hamming_loss_*100,2)
@@ -63,7 +63,7 @@ def calculate_f1_acc_test(pred_labels, true_labels, test_label_cols, threshold =
 
     prf = precision_recall_fscore_support(target, pred, average=None)
 
-    return f1_score_micro, f1_score_macro, subset_accuracy, hamming_loss_, hamming_score_, clf_report
+    return f1_score_micro, f1_score_macro, hamming_loss_, hamming_score_, subset_accuracy, clf_report
 
 def calculate_f1_acc_test_opt(pred_labels, true_labels, test_label_cols, threshold = 0.50):
     # Calculate Accuracy - maximize F1 accuracy by tuning threshold values. First with 'macro_thresholds' on the order of e^-1 then with 'micro_thresholds' on the order of e^-2
