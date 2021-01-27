@@ -38,7 +38,7 @@ def run(config, gpu_id=0):
         if use_cuda == False:
             print("[  use_cuda  ] No GPU available in your machine, will be using CPU")
             device = 'cpu'
-        if use_cuda == True:
+        elif use_cuda == True:
             device_name = torch.cuda.get_device_name(gpu_id)
             print(f"[  use_cuda  ]  will be using: {device_name}")
             device = 'cuda'
@@ -129,7 +129,7 @@ def run(config, gpu_id=0):
             # Load model, the pretrained model will include a single linear classification layer on top for classification. 
             if training_type == "singlehead_cls":
                 model = configuration.setup_model(cfg['model'])(num_labels, training_type)
-            if training_type == "MTL_cls":
+            elif training_type == "MTL_cls":
                 heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
                 num_labels = [len(labels) for labels in heads_index]
                 model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
@@ -166,7 +166,7 @@ def run(config, gpu_id=0):
         # Load model, the pretrained model will include a single linear classification layer on top for classification. 
         if training_type == "singlehead_cls":
             model = configuration.setup_model(cfg['model'])(num_labels, training_type)
-        if training_type == "MTL_cls":
+        elif training_type == "MTL_cls":
             heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
             num_labels = [len(labels) for labels in heads_index]
             model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
