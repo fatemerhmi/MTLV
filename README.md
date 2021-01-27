@@ -26,8 +26,26 @@ This will initialize your local configuration file
 
 ## Run your experiments:
 `python3 src/main.py --help`       
+`python3 src/main.py run --help`       
 `python3 src/main.py run --config src/mtl/config/openI_1layer.yml`      
 `python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
+
+## Run baseline experiments
+```
+$ python3 src/baseline/main.py run --help
+Usage: main.py run [OPTIONS]
+
+Options:
+  -d, --dataset TEXT     The name of the dataset, choose between: "openI",
+                         "news", "twentynewsgroup", "ohsumed", "reuters"
+  -c, --classifier TEXT  Name of the classifier, choose between:
+                         "randomForest", "logisticRegression", "xgboost"
+  -e, --embedding TEXT   Embedding approach, choose between: "tfidf", "bow"
+  --help                 Show this message and exit.
+```
+Examples:
+`python3 src/baseline/main.py run -d twentynewsgroup -c randomForest -e bow` 
+`python3 src/main.py run --config src/mtl/config/ohsumed/ohsumed_singlehead1.yml -g 1`
 
 ## see the results in mlflow:
 1. Server: `source env/bin/activate`
