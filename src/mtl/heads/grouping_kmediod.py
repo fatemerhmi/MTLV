@@ -51,7 +51,7 @@ def plot_elbow_method(data, Krange):
     # plt.savefig(f'elbow.png', dpi=100)
 
 def grouping_kmediod(data, n_clusters_):
-    n_clusters_ = 4
+    # n_clusters_ = 4
     kmedoids = KMedoids(n_clusters=n_clusters_, random_state=0).fit(data)
     heads_index = [list(np.where(kmedoids.labels_==i)[0]) for i in range(n_clusters_)]
 
