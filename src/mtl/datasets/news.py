@@ -31,6 +31,9 @@ def prepare_text_col(df_train, df_test):
     # print(columns_to_remove)
     df_train.drop(columns= columns_to_remove, inplace=True)
     df_test.drop(columns= columns_to_remove, inplace=True)
+
+    df_train = df_train.sample(frac=1).reset_index(drop=True)
+
     return df_train, df_test
 
 def news_dataset_preprocess(dataset_args):
