@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: news_experiments
-  run_name: signlehead_bert-base-uncased_e20_cv
+  run_name: signlehead_bert-base-uncased_e10
   tracking_uri: mlruns
 
 dataset: 
@@ -17,11 +17,11 @@ model:
 
 training:
   type: singlehead_cls
-  epoch : 20
+  epoch : 10
   batch_size : 16
   use_cuda : True
-  # cv : True # False
-  # fold : 5
+  cv : True # False
+  fold : 5
 
 head: 
   single-head:
@@ -29,9 +29,9 @@ head:
 
 tokenizer:
   bert:
-    name: bert_base_uncased #bert_base_cased
-    padding: max_length    # to pad to the longest sequence in the batch
-    truncation: True  # truncate to a maximum length specified by the max_length
+    name: bert_base_uncased 
+    padding: max_length  
+    truncation: True 
     max_length : 256
 
 optimizer:

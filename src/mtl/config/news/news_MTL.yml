@@ -1,6 +1,6 @@
 mlflow:
   experiment_name: news_experiments
-  run_name: MTL_bert-base-uncased_kmedoid_c4_wloss_a_e27_cv
+  run_name: MTL_bert-base-uncased_kmedoid_c6_wloss_a_e10 #_cv
   tracking_uri: mlruns
 
 dataset: 
@@ -17,7 +17,7 @@ model:
     
 training:
   type: MTL_cls
-  epoch : 20
+  epoch : 10
   batch_size : 16
   use_cuda : True
   # cv : False #True #
@@ -28,8 +28,8 @@ head:
     heads: MultiLabelCLS
     type: kmediod-label #kmediod-labeldesc #kmediod-labeldesc #kmediod-label givenset meanshift KDE kmediod-label, kmediod-labeldesc 
     # bandwidth: 20
-    elbow: 8
-    clusters: 4
+    elbow: 20
+    clusters: 6
     # count: 4
     # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
     plot: true
