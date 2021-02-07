@@ -20,8 +20,8 @@ training:
   epoch : 10
   batch_size : 16
   use_cuda : True
-  # cv : False #True #
-  # fold : 5
+  cv : True #False #True #
+  fold : 5
 
 head: 
   multi-task:
