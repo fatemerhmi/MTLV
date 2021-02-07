@@ -55,6 +55,8 @@ def run(config, gpu_id=0):
     #-------Setup datasets
     if "cv" in cfg['training'].keys():
         training_cv = cfg['training']['cv']
+        if training_cv == False:
+            NameError("Fold is given, but cv is False. Make sure to put cv as True if you want to do cross validation")
         fold = cfg['training']['fold']
         dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size, training_cv)
     else:
@@ -141,23 +143,23 @@ def run(config, gpu_id=0):
                     param.requires_grad = False
 
             #-------setup training
-            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_ = train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, training_type, fold_i)
-            results.append([test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_])
+            test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy = train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, training_type, fold_i)
+            results.append([test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy])
         #-------calculate mean and variance of run details
         results = np.array(results)
         mean = np.mean(results, axis=0)
         mlflowLogger.store_metric(f"cv.test.f1_micro.mean", mean[0])       
         mlflowLogger.store_metric(f"cv.test.f1_macro.mean", mean[1])       
-        mlflowLogger.store_metric(f"cv.test.subset_accuracy.mean", mean[2])          
-        mlflowLogger.store_metric(f"cv.test.hamming_loss.mean", mean[3])          
-        mlflowLogger.store_metric(f"cv.test.hamming_score.mean", mean[4])          
+        mlflowLogger.store_metric(f"cv.test.hamming_loss.mean", mean[2])          
+        mlflowLogger.store_metric(f"cv.test.hamming_score.mean", mean[3])          
+        mlflowLogger.store_metric(f"cv.test.subset_accuracy.mean", mean[4])          
         
         std = np.std(results, axis=0)
         mlflowLogger.store_metric(f"cv.test.f1_micro.std", std[0])       
         mlflowLogger.store_metric(f"cv.test.f1_macro.std", std[1])       
-        mlflowLogger.store_metric(f"cv.test.subset_accuracy.std", std[2])          
-        mlflowLogger.store_metric(f"cv.test.hamming_loss.std", std[3])          
-        mlflowLogger.store_metric(f"cv.test.hamming_score.std", std[4])          
+        mlflowLogger.store_metric(f"cv.test.hamming_loss.std", std[2])          
+        mlflowLogger.store_metric(f"cv.test.hamming_score.std", std[3])          
+        mlflowLogger.store_metric(f"cv.test.subset_accuracy.std", std[4])          
         
         mlflowLogger.finish_mlflowrun()
         return
