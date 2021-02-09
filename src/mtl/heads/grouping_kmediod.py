@@ -1,7 +1,7 @@
 import matplotlib
 import seaborn as sns
 import pandas as pd
-from sklearn.datasets import load_digits
+# from sklearn.datasets import load_digits
 
 import torch
 from scipy import spatial
@@ -68,7 +68,7 @@ def grouping_kmediod(data, n_clusters_):
 
 def plot_emb_groups(embds, labels, cluster_label):
 
-    digits = load_digits()
+    # digits = load_digits()
 
     data_X = embds
     y = cluster_label
@@ -80,13 +80,15 @@ def plot_emb_groups(embds, labels, cluster_label):
 
     tsne_df = pd.DataFrame({'X':tsne_obj[:,0],
                             'Y':tsne_obj[:,1],
-                            'digit':y})
+                            'cluster':y})
 
     tsne_plot = sns.scatterplot(x="X", y="Y",
-              hue="digit",
+              hue="cluster",
               palette=None,
               legend='full',
               data=tsne_df);            
     fig = tsne_plot.get_figure()
     plt.title('TSNE of embds')
+    plt.xlabel('X')
+    plt.ylabel('Y')
     mlflowLogger.store_pic(fig, 'tsne', 'png')
