@@ -201,11 +201,11 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
             # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
             model = configuration.setup_model(model_cfg)(num_labels, "emb_cls")
             embds = get_all_label_embds(labels, tokenizer, model)
-            if "elbow" in head_args.keys():
+            if "elbow" in head_args.keys() and (fold_i == 1):
                 plot_elbow_method(embds,head_args['elbow'])
             heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'])
             if "plot" in head_args.keys():
-                if head_args['plot'] == True:
+                if (head_args['plot'] == True) and (fold_i == 1):
                     plot_emb_groups(embds, labels, cluster_label)
             del model
 
