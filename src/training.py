@@ -361,14 +361,14 @@ def store_results_to_mlflow(prefix, fold_i, e , f1_micro, f1_macro, hamming_loss
         mlflowLogger.store_metric(f"{prefix}.f1_micro", f1_micro, e)
         mlflowLogger.store_metric(f"{prefix}.f1_macro", f1_macro, e)
         mlflowLogger.store_metric(f"{prefix}.Hamming_score", hamming_score_, e)
-        mlflowLogger.store_metric(f"{prefix}.Hamming_loss", hamming_loss_, e)
+        # mlflowLogger.store_metric(f"{prefix}.Hamming_loss", hamming_loss_, e)
         mlflowLogger.store_metric(f"{prefix}.subset_accuracy", subset_accuracy, e)
         if clf_report != None: mlflowLogger.store_artifact(clf_report, "cls_report", "txt")
     else:
         mlflowLogger.store_metric(f"{prefix}.Fold{fold_i}.f1_micro", f1_micro, e)
         mlflowLogger.store_metric(f"{prefix}.Fold{fold_i}.f1_macro", f1_macro, e)
         mlflowLogger.store_metric(f"{prefix}.Fold{fold_i}.Hamming_score", hamming_score_, e)
-        mlflowLogger.store_metric(f"{prefix}.Fold{fold_i}.Hamming_loss", hamming_loss_, e)
+        # mlflowLogger.store_metric(f"{prefix}.Fold{fold_i}.Hamming_loss", hamming_loss_, e)
         mlflowLogger.store_metric(f"{prefix}.Fold{fold_i}.subset_accuracy", subset_accuracy, e)
         if clf_report != None: mlflowLogger.store_artifact(clf_report, f"cls_report.Fold{fold_i}", "txt")
 
