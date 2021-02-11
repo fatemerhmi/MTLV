@@ -15,6 +15,19 @@ import mtl.utils.configuration as configuration
 import mtl.utils.logger as mlflowLogger 
 from training import train
 
+def store_mflow_metrics(results, prefix):
+    mean = np.mean(results, axis=0) 
+    mlflowLogger.store_metric(f"{prefix}.cv.test.f1_micro.mean", mean[0])       
+    mlflowLogger.store_metric(f"{prefix}.cv.test.f1_macro.mean", mean[1])            
+    mlflowLogger.store_metric(f"{prefix}.cv.test.hamming_score.mean", mean[2])          
+    mlflowLogger.store_metric(f"{prefix}.cv.test.subset_accuracy.mean", mean[3])          
+    
+    std = np.std(results, axis=0)
+    mlflowLogger.store_metric(f"{prefix}.cv.test.f1_micro.std", std[0])       
+    mlflowLogger.store_metric(f"{prefix}.cv.test.f1_macro.std", std[1])                
+    mlflowLogger.store_metric(f"{prefix}.cv.test.hamming_score.std", std[2])          
+    mlflowLogger.store_metric(f"{prefix}.cv.test.subset_accuracy.std", std[3])   
+
 @click.group()
 def main():
     """The package help is as follows."""
@@ -94,7 +107,10 @@ def run(config, gpu_id=0):
 
         # ttest
         results_MTL = np.array(results_MTL)
+        store_mflow_metrics(results_MTL, "MTL")
         results_singleHead = np.array(results_singleHead)
+        store_mflow_metrics(results_singleHead, "STL")
+
         _, ttest_f1_mi =  stats.ttest_rel(results_MTL[:,0],results_singleHead[:,0])
         _, ttest_f1_ma =  stats.ttest_rel(results_MTL[:,1],results_singleHead[:,1])
         _, ttest_hammingscore   =  stats.ttest_rel(results_MTL[:,2],results_singleHead[:,2])
@@ -147,17 +163,8 @@ def run(config, gpu_id=0):
             results.append([test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy])
         #-------calculate mean and variance of run details
         results = np.array(results)
-        mean = np.mean(results, axis=0)
-        mlflowLogger.store_metric(f"cv.test.f1_micro.mean", mean[0])       
-        mlflowLogger.store_metric(f"cv.test.f1_macro.mean", mean[1])            
-        mlflowLogger.store_metric(f"cv.test.hamming_score.mean", mean[2])          
-        mlflowLogger.store_metric(f"cv.test.subset_accuracy.mean", mean[3])          
-        
-        std = np.std(results, axis=0)
-        mlflowLogger.store_metric(f"cv.test.f1_micro.std", std[0])       
-        mlflowLogger.store_metric(f"cv.test.f1_macro.std", std[1])                
-        mlflowLogger.store_metric(f"cv.test.hamming_score.std", std[2])          
-        mlflowLogger.store_metric(f"cv.test.subset_accuracy.std", std[3])          
+        store_mflow_metrics(results, "MTL")
+         
         
         mlflowLogger.finish_mlflowrun()
         return
