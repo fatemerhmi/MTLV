@@ -89,8 +89,8 @@ def read_fold_train_validattion(fold_i, dataset_args):
     train_df.replace(np.nan, "", inplace=True)
     val_df.replace(np.nan, "", inplace=True)
 
-    train_df.loc[:,'labels'] = train_df.labels.apply(ast.literal_eval, axis=1)
-    val_df.loc[:,'labels'] = val_df.labels.apply(ast.literal_eval, axis=1)
+    train_df.loc[:,'labels'] = train_df.labels.apply(ast.literal_eval)
+    val_df.loc[:,'labels'] = val_df.labels.apply(ast.literal_eval)
 
     return train_df, val_df
 
@@ -121,6 +121,7 @@ def _setup_dataset_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, hea
         fold_i += 1
         print(f"[dataset] ======================================= Fold {fold_i} =======================================")
         if not os.path.exists(f'{DATA_DIR}/news/train_fold{fold_i}.csv'):
+            print("&"*40)
             val_df = train_df_orig.iloc[val_indexes,:]
             train_df = train_df_orig.iloc[train_indexes,:]
 
@@ -129,6 +130,7 @@ def _setup_dataset_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, hea
 
             save_fold_train_validation(train_df, val_df, dataset_args, fold_i)
         else:
+            print("$"*40)
             train_df, val_df = read_fold_train_validattion(fold_i, dataset_args)
 
         train_dataloader, validation_dataloader, test_dataloader, num_labels = preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, head_type, head_args, num_labels, model_cfg, batch_size, fold_i)
