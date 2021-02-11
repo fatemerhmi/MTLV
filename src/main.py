@@ -77,15 +77,15 @@ def run(config, gpu_id=0):
 
             #-------single head--------
             model_singleHead = configuration.setup_model(cfg['model'])(num_labels_s, "singlehead_cls")
-            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_ = train(train_dataloader_s, val_dataloader_s, test_dataloader_s, model_singleHead, cfg , use_cuda, "singlehead_cls", fold_i)
-            results_singleHead.append([test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_])
+            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = train(train_dataloader_s, val_dataloader_s, test_dataloader_s, model_singleHead, cfg , use_cuda, "singlehead_cls", fold_i)
+            results_singleHead.append([test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy])
             
             #-------MTL----------------
             heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
             num_labels_head = [len(labels) for labels in heads_index]
             model_MTL = configuration.setup_model(cfg['model'])(num_labels_head, "MTL_cls", device)
-            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_ = train(train_dataloader_mtl, val_dataloader_mtl, test_dataloader_mtl, model_MTL, cfg , use_cuda, "MTL_cls", fold_i)
-            results_MTL.append([test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_])
+            test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy = train(train_dataloader_mtl, val_dataloader_mtl, test_dataloader_mtl, model_MTL, cfg , use_cuda, "MTL_cls", fold_i)
+            results_MTL.append([test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy])
 
 
         #-------calculate mean and variance of run details------
@@ -97,25 +97,25 @@ def run(config, gpu_id=0):
         results_singleHead = np.array(results_singleHead)
         _, ttest_f1_mi =  stats.ttest_rel(results_MTL[:,0],results_singleHead[:,0])
         _, ttest_f1_ma =  stats.ttest_rel(results_MTL[:,1],results_singleHead[:,1])
-        _, ttest_subset_acc   =  stats.ttest_rel(results_MTL[:,2],results_singleHead[:,2])
-        _, ttest_hammingscore   =  stats.ttest_rel(results_MTL[:,4],results_singleHead[:,4])
+        _, ttest_hammingscore   =  stats.ttest_rel(results_MTL[:,2],results_singleHead[:,2])
+        _, ttest_subset_acc   =  stats.ttest_rel(results_MTL[:,3],results_singleHead[:,3])
 
         mlflowLogger.store_metric(f"ttest_f1_mi", ttest_f1_mi)          
         mlflowLogger.store_metric(f"ttest_f1_ma", ttest_f1_ma)          
-        mlflowLogger.store_metric(f"ttest_subset_acc", ttest_subset_acc)          
         mlflowLogger.store_metric(f"ttest_hammingscore", ttest_hammingscore)          
-        
+        mlflowLogger.store_metric(f"ttest_subset_acc", ttest_subset_acc)          
+
         # ttest wilcoxon
         _, ttest_f1_mi =  stats.wilcoxon(results_MTL[:,0],results_singleHead[:,0])
         _, ttest_f1_ma =  stats.wilcoxon(results_MTL[:,1],results_singleHead[:,1])
-        _, ttest_subset_acc   =  stats.wilcoxon(results_MTL[:,2],results_singleHead[:,2])
-        _, ttest_hammingscore   =  stats.wilcoxon(results_MTL[:,4],results_singleHead[:,4])
+        _, ttest_hammingscore   =  stats.wilcoxon(results_MTL[:,2],results_singleHead[:,2])
+        _, ttest_subset_acc   =  stats.wilcoxon(results_MTL[:,3],results_singleHead[:,3])
 
         mlflowLogger.store_metric(f"ttest_f1_wilcoxon_mi", ttest_f1_mi)          
         mlflowLogger.store_metric(f"ttest_f1_wilcoxon_ma", ttest_f1_ma)          
-        mlflowLogger.store_metric(f"ttest_wilcoxon_subset_acc", ttest_subset_acc)               
         mlflowLogger.store_metric(f"ttest_wilcoxon_hammingscore", ttest_hammingscore)               
-        
+        mlflowLogger.store_metric(f"ttest_wilcoxon_subset_acc", ttest_subset_acc)               
+
         mlflowLogger.finish_mlflowrun()
         return
 
@@ -143,23 +143,23 @@ def run(config, gpu_id=0):
                     param.requires_grad = False
 
             #-------setup training
-            test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy = train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, training_type, fold_i)
-            results.append([test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy])
+            test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy = train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, training_type, fold_i)
+            results.append([test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy])
         #-------calculate mean and variance of run details
         results = np.array(results)
         mean = np.mean(results, axis=0)
         mlflowLogger.store_metric(f"cv.test.f1_micro.mean", mean[0])       
         mlflowLogger.store_metric(f"cv.test.f1_macro.mean", mean[1])       
-        mlflowLogger.store_metric(f"cv.test.hamming_loss.mean", mean[2])          
-        mlflowLogger.store_metric(f"cv.test.hamming_score.mean", mean[3])          
-        mlflowLogger.store_metric(f"cv.test.subset_accuracy.mean", mean[4])          
+        # mlflowLogger.store_metric(f"cv.test.hamming_loss.mean", mean[2])          
+        mlflowLogger.store_metric(f"cv.test.hamming_score.mean", mean[2])          
+        mlflowLogger.store_metric(f"cv.test.subset_accuracy.mean", mean[3])          
         
         std = np.std(results, axis=0)
         mlflowLogger.store_metric(f"cv.test.f1_micro.std", std[0])       
         mlflowLogger.store_metric(f"cv.test.f1_macro.std", std[1])       
-        mlflowLogger.store_metric(f"cv.test.hamming_loss.std", std[2])          
-        mlflowLogger.store_metric(f"cv.test.hamming_score.std", std[3])          
-        mlflowLogger.store_metric(f"cv.test.subset_accuracy.std", std[4])          
+        # mlflowLogger.store_metric(f"cv.test.hamming_loss.std", std[2])          
+        mlflowLogger.store_metric(f"cv.test.hamming_score.std", std[2])          
+        mlflowLogger.store_metric(f"cv.test.subset_accuracy.std", std[3])          
         
         mlflowLogger.finish_mlflowrun()
         return

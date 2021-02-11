@@ -266,7 +266,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     if fold_i == None: 
         mlflowLogger.finish_mlflowrun()
     if fold_i != None: 
-        return test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy
+        return test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy
 
 def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i = None):
 
@@ -352,7 +352,7 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
     mlflowLogger.store_artifact(test_clf_report, "test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"test.cls_report.Fold{fold_i}.", "txt")
 
     if fold_i !=None: 
-        return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_
+        return test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy
     if fold_i == None: 
         mlflowLogger.finish_mlflowrun()
 
