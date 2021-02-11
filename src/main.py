@@ -149,15 +149,13 @@ def run(config, gpu_id=0):
         results = np.array(results)
         mean = np.mean(results, axis=0)
         mlflowLogger.store_metric(f"cv.test.f1_micro.mean", mean[0])       
-        mlflowLogger.store_metric(f"cv.test.f1_macro.mean", mean[1])       
-        # mlflowLogger.store_metric(f"cv.test.hamming_loss.mean", mean[2])          
+        mlflowLogger.store_metric(f"cv.test.f1_macro.mean", mean[1])            
         mlflowLogger.store_metric(f"cv.test.hamming_score.mean", mean[2])          
         mlflowLogger.store_metric(f"cv.test.subset_accuracy.mean", mean[3])          
         
         std = np.std(results, axis=0)
         mlflowLogger.store_metric(f"cv.test.f1_micro.std", std[0])       
-        mlflowLogger.store_metric(f"cv.test.f1_macro.std", std[1])       
-        # mlflowLogger.store_metric(f"cv.test.hamming_loss.std", std[2])          
+        mlflowLogger.store_metric(f"cv.test.f1_macro.std", std[1])                
         mlflowLogger.store_metric(f"cv.test.hamming_score.std", std[2])          
         mlflowLogger.store_metric(f"cv.test.subset_accuracy.std", std[3])          
         
