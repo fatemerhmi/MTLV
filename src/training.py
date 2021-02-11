@@ -34,7 +34,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
         print(f"[  training  ] The training type is: Multi-head classification.")
         if fold_i != None:
             print(f"[training] Fold {fold_i}")
-            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_ = mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i)
+            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i)
         else:
             mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
 
@@ -46,12 +46,12 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
 
         if fold_i != None:
             print(f"[training] Fold {fold_i}")
-            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_ = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i)
+            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i)
         else:
             singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
     
     if fold_i != None:
-        return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_loss_, test_hamming_score_
+        return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_
 
 def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None):
     #-------get params from mlflow
