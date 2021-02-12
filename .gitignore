@@ -6,10 +6,11 @@ runs/
 model_weights/bio**
 model_weights/bert**
 model_weights/.**
-
+model_weights/news_BERT/*
 results.xlsx
 
 mlruns/
+mlruns.tar
 artifacts/
 .vscode/
 setup_cc*
