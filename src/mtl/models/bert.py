@@ -6,7 +6,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 import os
 
 __all__ = ['bert_base_uncased', 'bert_base_cased', \
-'BioBERT_Basev1_1', 'BioBERT_Basev1_0_PM', 'BioBERT_Basev1_0_PMC', 'BioBERT_Basev1_0_PM_PMC']
+'BioBERT_Basev1_1', 'BioBERT_Basev1_0_PM', 'BioBERT_Basev1_0_PMC', 'BioBERT_Basev1_0_PM_PMC', "bert_base_news"]
 
 class BertCLS(BertPreTrainedModel):
     def __init__(self, config):
@@ -209,6 +209,24 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
         )
 
 
+
+def bert_base_news(num_labels, training_type, device='gpu'):
+    MODEL_PATH = "model_weights/news_BERT"
+
+    if training_type == "singlehead_cls":
+        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "MTL_cls":
+        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+        model.embedding_size = model.hidden_size_BertCLS
+
+    elif training_type == "emb_cls":
+        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+    else:
+        NameError(f"No further tuned model found at {MODEL_PATH}")
+
+    return model
 
 def bert_base_uncased(num_labels, training_type, device='gpu'):
     MODEL_PATH = "model_weights/bert-base-uncased"
