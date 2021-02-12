@@ -50,7 +50,7 @@ from transformers import Trainer, TrainingArguments
 training_args = TrainingArguments(
     output_dir="model_weights/news_BERT",
     overwrite_output_dir=True,
-    num_train_epochs=1,
+    num_train_epochs=3,
     per_device_train_batch_size=64,
     save_steps=10_000,
     save_total_limit=5,
