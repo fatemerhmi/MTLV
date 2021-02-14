@@ -136,7 +136,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
             with torch.no_grad():
                 pred_label_heads = []
                 true_label_heads = []
-                outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
+                outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
                 for i in range(0,nheads):
                     #remove -1 paddings:
                     labels = b_labels[:,i,:]
