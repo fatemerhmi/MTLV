@@ -165,9 +165,9 @@ labels_dict={
     'new product launch': "new product launch is when a company launch or introduce a new product",
     'divestment': "divestment is the action or process of selling off subsidiary business interests or investments",
     'financial loss': "financial loss is loss of money or decrease in financial value",
-    'customer loss or growth decline': "customer loss is the loss of clients or customers. growth decline is when business does not keep pace with the rest of the country's economic growth, or when its rate of growth contracts across multiple measurement periods declines",
+    'customer loss growth decline': "customer loss is the loss of clients or customers. growth decline is when business does not keep pace with the rest of the country's economic growth, or when its rate of growth contracts across multiple measurement periods declines",
     'organizational restructuring': "organizational restructuring is the act of changing the business model of an organization to transform it for the better. These changes can be legal, operational processes, ownership, etc.",
-    'merger and acquisition': "mergers and acquisitions (M&A) refer broadly to the process of one company combining with one another.",
+    'merger acquisition': "mergers and acquisitions (M&A) refer broadly to the process of one company combining with one another.",
     'cost cutting': "cost cutting or Cost reduction is the process used by companies to reduce their costs and increase their profits.",
     'business shut-down': "A shutdown point is a level of operations at which a company experiences no benefit for continuing operations and therefore decides to shut down temporarily—or in some cases permanently.",
     'bankruptcy': "Bankruptcy is a legal proceeding involving a person or business that is unable to repay their outstanding debts",
@@ -177,7 +177,7 @@ labels_dict={
     'joint venture': "A joint venture is a business entity created by two or more parties, generally characterized by shared ownership, shared returns and risks, and shared governance.",
     'hiring': "hiring is the process of identifying, attracting, interviewing, suitable candidates for jobs within an organization or a company",
     'financial result': "The financial result is the difference between earnings before interest and taxes and earnings before taxes. It is determined by the earning or the loss which results from financial affairs.",
-    'fundraising and investment': "Investment is the action or process of investing money for profit or material result. Fundraising or fund-raising is the process of seeking and gathering voluntary financial contributions by engaging individuals, businesses, charitable foundations, or governmental agencies.",
+    'fundraising investment': "Investment is the action or process of investing money for profit or material result. Fundraising or fund-raising is the process of seeking and gathering voluntary financial contributions by engaging individuals, businesses, charitable foundations, or governmental agencies.",
     'executive appointment': "executive appointment is when a company appoint or hire a new executive",
     'regulatory approval': "Regulatory Approval means any approvals, product and or establishment licenses, registrations or authorizations of a company",
     'downsizing': "downsizing is making a company or organization smaller by eliminating staff positions or lay off current staff",
@@ -193,6 +193,6 @@ labels_dict={
     'board decisions': "meeting with the board of directors to make a decision about the company",
     'business expansion': "Business Expansion is a stage where the business reaches the point for growth and seeks out for additional options to generate more profit.",
     'buyout': "a buyout is an investment transaction by which the ownership equity of a company, or a majority share of the stock of the company is acquired",
-    'alliance and partnership': "A partnership company is formed when the parties involved agree to share the business's profits or losses proportionately. A strategic alliance is an agreement between two or more parties to pursue a set of agreed upon objectives needed while remaining independent organizations. ",
+    'alliance partnership': "A partnership company is formed when the parties involved agree to share the business's profits or losses proportionately. A strategic alliance is an agreement between two or more parties to pursue a set of agreed upon objectives needed while remaining independent organizations. ",
     'law suit judgement settlement': "law suit judgement settlement, In law, a settlement is a resolution between disputing parties about a legal case, reached either before or after court action begins"
 }
