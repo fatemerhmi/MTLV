@@ -163,7 +163,10 @@ def run(config, gpu_id=0):
             results.append([test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy])
         #-------calculate mean and variance of run details
         results = np.array(results)
-        store_mflow_metrics(results, "MTL")
+        if training_type == "singlehead_cls":
+            store_mflow_metrics(results, "STL")
+        elif training_type == "MTL_cls":
+            store_mflow_metrics(results, "MTL")
          
         
         mlflowLogger.finish_mlflowrun()
