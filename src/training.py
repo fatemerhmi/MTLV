@@ -244,7 +244,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
     pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
     
-    test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report= calculate_f1_acc_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
+    test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report= calculate_scores_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
     store_results_to_mlflow(f"mtl.test", fold_i, e , test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report)
     
 
@@ -347,7 +347,7 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
             true_labels_signlehead.extend(b_labels.cpu().detach().numpy().tolist())
             pred_labels_singlehead.extend(torch.sigmoid(outputs.logits).cpu().detach().numpy().tolist())
     
-    test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report = calculate_f1_acc_test(pred_labels_singlehead, true_labels_signlehead, col_names)
+    test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report = calculate_scores_test(pred_labels_singlehead, true_labels_signlehead, col_names)
     store_results_to_mlflow("stl.test", fold_i, e , test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy)
     mlflowLogger.store_artifact(test_clf_report, "stl.test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"stl.test.cls_report.Fold{fold_i}.", "txt")
 
