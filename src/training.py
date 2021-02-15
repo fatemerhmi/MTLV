@@ -53,6 +53,9 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
     if fold_i != None:
         return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_
 
+def mtl_validation():
+    pass
+
 def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None):
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names")) 
@@ -158,24 +161,28 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
 
                 # store batch labels 
                 # pred_label_b = np.array(pred_label_heads)
-                pred_label_b = torch.cat(pred_label_heads,0)
-                true_labels_b = np.array(true_label_heads)
+                pred_label_b = pred_label_heads
+                # pred_label_b = torch.cat(pred_label_heads,0)
+                # true_labels_b = np.array(true_label_heads)
+                true_labels_b = true_label_heads
 
                 #store each head label seperatly
                 true_labels_each_head.append(true_labels_b)
                 pred_labels_each_head.append(pred_label_b)
 
                 #store all head labels together
-                true_labels_all_head.append(
-                    torch.cat([true_head_label for true_head_label in true_labels_b],1)
-                    .to('cpu').numpy())
-                pred_labels_all_head.append(
-                    torch.cat([pred_head_label for pred_head_label in pred_label_b],1)
-                    .to('cpu').numpy())
+                # true_labels_all_head.append(
+                #     torch.cat([true_head_label for true_head_label in true_labels_b],1)
+                #     .to('cpu').numpy())
+                # pred_labels_all_head.append(
+                #     torch.cat([pred_head_label for pred_head_label in pred_label_b],1)
+                #     .to('cpu').numpy())
+                true_labels_all_head.append(torch.cat(true_labels_b,1).to('cpu').numpy())
+                pred_labels_all_head.append(torch.cat(pred_label_b,1).to('cpu').numpy())
 
         #-------------------------calculate and storing VALIDATION result for ALL heads----------------------
-        true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
-        pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
+        true_labels_all_head = np.concatenate(true_labels_all_head, axis=0)
+        pred_labels_all_head = np.concatenate(pred_labels_all_head, axis=0)
 
         val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy, prf = calculate_scores(pred_labels_all_head, true_labels_all_head)
 
