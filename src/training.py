@@ -84,7 +84,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         model.train()
 
         tr_loss = 0 #MTL loss
-        train_headloss = np.zeros(nheads) # head losses
+        train_headloss = torch.zeros(nheads) # head losses
         nb_tr_steps =  0
 
         # Train the data for one epoch
@@ -98,7 +98,8 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
             outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
             
             #--------head loss
-            train_headloss = np.sum([train_headloss, outputs.loss], axis=0)
+            # train_headloss = np.sum([train_headloss, outputs.loss], axis=0)
+            train_headloss = train_headloss.add(outputs.loss)
 
             #------total loss and backprop
             if 'weights' in cfg_loss:
@@ -156,7 +157,8 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
                 #     mlflowLogger.store_metric(f"validation.loss.head{head_indx}", val_loss_head.item(), e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.loss.head{head_indx}", val_loss_head.item(), e)
 
                 # store batch labels 
-                pred_label_b = np.array(pred_label_heads)
+                # pred_label_b = np.array(pred_label_heads)
+                pred_label_b = torch.cat(pred_label_heads,0)
                 true_labels_b = np.array(true_label_heads)
 
                 #store each head label seperatly
