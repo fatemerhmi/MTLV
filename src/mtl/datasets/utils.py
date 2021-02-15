@@ -216,9 +216,12 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
             labels_list = [labels_dict[label] for label in labels]
             # list(labels_dict.values()
             embds = get_all_label_embds(labels_list, tokenizer, model)
-            if "elbow" in head_args.keys():
+            if "elbow" in head_args.keys() and (fold_i == 1):
                 plot_elbow_method(embds,head_args['elbow'])
-            heads_index = grouping_kmediod(embds, head_args['clusters'])
+            heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'], labels_list)
+            if "plot" in head_args.keys():
+                if (head_args['plot'] == True) and (fold_i == 1):
+                    plot_emb_groups(embds, labels_list, cluster_label)
             del model
 
         mlflowLogger.store_param(f"heads_index", heads_index)
