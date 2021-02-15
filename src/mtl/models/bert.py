@@ -183,20 +183,20 @@ class BertCLS_multilabel_MTL(BertPreTrainedModel):
         logits_heads = [clf(pooled_output) for clf in self.classifiers]
         # logits = self.classifier(pooled_output)
 
-
+        losses = None
         if labels is not None:
             loss_func = BCEWithLogitsLoss()
             # fix the labels here
             # losses = [loss_func(logits.view(-1, self.num_labels), labels.type_as(logits).view(-1, self.num_labels)) for logits, num_labels in zip(logits_heads, self.num_labels_list, )]
             # loss = loss_func(logits.view(-1, self.num_labels), labels.type_as(logits).view(-1, self.num_labels))
-            losses = []
+            losses = torch.zeros(self.nhead)
             for i, logits, num_labels in zip(range(0,self.nhead), logits_heads, self.num_labels_list):
                 #remove -1 paddings:
                 head_labels = labels[:,i,:]
                 head_labels = head_labels[:,0:self.num_labels_list[i]]
 
                 loss = loss_func(logits.view(-1, num_labels), head_labels.type_as(logits).view(-1, num_labels))
-                losses.append(loss)
+                losses[i] = loss
 
         if not return_dict:
             output = (logits,) + outputs[2:]
