@@ -1,5 +1,6 @@
-import statistics 
+# import statistics 
 import numpy as np
+import torch
 
 __all__ = ['sumloss', 'avgloss', 'weightedavg', 'weightedsum', "weighted_lossp_sum", "weighted_lossp_avg"]
 
@@ -37,15 +38,18 @@ def weightedsum(head_losses, weights):
 
 def weighted_lossp_sum(head_losses):
     loss = 0
-    m = statistics.mean(np.array(head_losses).astype(np.float32))
+    # m = statistics.mean(np.array(head_losses).astype(np.float32))
+    m = torch.mean(head_losses)
     for head in head_losses:
         loss += ((head/m) * head)
     return loss
 
 def weighted_lossp_avg(head_losses):
     loss = 0
-    m = statistics.mean(np.array(head_losses).astype(np.float32))
+    # m = statistics.mean(np.array(head_losses).astype(np.float32))
+    m = torch.mean(head_losses)
     for head in head_losses:
         loss += ((head/m) * head)
     count = len(head_losses)
     return loss/count
+
