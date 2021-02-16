@@ -53,8 +53,40 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
     if fold_i != None:
         return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_
 
-def mtl_validation():
-    pass
+def mtl_validation_test(validation_dataloader, head_count, device, nheads, model):
+    # Variables to gather full output
+    true_labels_each_head,pred_labels_each_head = [],[]
+    true_labels_all_head,pred_labels_all_head = [],[]
+    
+    for i, batch in enumerate(validation_dataloader):
+        batch = tuple(t.to(device) for t in batch)
+        # Unpack the inputs from our dataloader
+        b_input_ids, b_input_mask, b_labels = batch
+        with torch.no_grad():
+            pred_label_b = []
+            true_labels_b = []
+            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
+            for i in range(0,nheads):
+                #remove -1 paddings:
+                labels = b_labels[:,i,:]
+                labels = labels[:,0:head_count[i]]
+
+                true_labels_b.append(labels)
+                pred = torch.sigmoid(outputs.logits[i])
+                pred_label_b.append(pred)
+
+            #store each head label seperatly
+            true_labels_each_head.append(true_labels_b)
+            pred_labels_each_head.append(pred_label_b)
+
+            #store all head labels together
+            true_labels_all_head.append(torch.cat(true_labels_b,1).to('cpu').numpy())
+            pred_labels_all_head.append(torch.cat(pred_label_b,1).to('cpu').numpy())
+
+    true_labels_all_head = np.concatenate(true_labels_all_head, axis=0)
+    pred_labels_all_head = np.concatenate(pred_labels_all_head, axis=0)
+
+    return pred_labels_all_head, true_labels_all_head, true_labels_each_head, pred_labels_each_head
 
 def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None):
     #-------get params from mlflow
@@ -128,62 +160,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
 
         #==============================Validation======================================
         model.eval()
-
-        # Variables to gather full output
-        true_labels_each_head,pred_labels_each_head = [],[]
-        true_labels_all_head,pred_labels_all_head = [],[]
-        
-        for i, batch in enumerate(validation_dataloader):
-            batch = tuple(t.to(device) for t in batch)
-            # Unpack the inputs from our dataloader
-            b_input_ids, b_input_mask, b_labels = batch
-            with torch.no_grad():
-                pred_label_heads = []
-                true_label_heads = []
-                outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
-                for i in range(0,nheads):
-                    #remove -1 paddings:
-                    labels = b_labels[:,i,:]
-                    labels = labels[:,0:head_count[i]]
-
-                    true_label_heads.append(labels)
-                    pred = torch.sigmoid(outputs.logits[i])
-                    pred_label_heads.append(pred)
-                
-                #------store validation loss
-                # if 'weights' in cfg_loss:
-                #     val_loss = loss_func(outputs.loss, cfg_loss['weights']).item()
-                # else:
-                #     val_loss = loss_func(outputs.loss).item()
-                # mlflowLogger.store_metric("validation.loss", val_loss, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.loss", val_loss, e)
-                # for head_indx, val_loss_head in enumerate(outputs.loss):
-                #     mlflowLogger.store_metric(f"validation.loss.head{head_indx}", val_loss_head.item(), e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.loss.head{head_indx}", val_loss_head.item(), e)
-
-                # store batch labels 
-                # pred_label_b = np.array(pred_label_heads)
-                pred_label_b = pred_label_heads
-                # pred_label_b = torch.cat(pred_label_heads,0)
-                # true_labels_b = np.array(true_label_heads)
-                true_labels_b = true_label_heads
-
-                #store each head label seperatly
-                true_labels_each_head.append(true_labels_b)
-                pred_labels_each_head.append(pred_label_b)
-
-                #store all head labels together
-                # true_labels_all_head.append(
-                #     torch.cat([true_head_label for true_head_label in true_labels_b],1)
-                #     .to('cpu').numpy())
-                # pred_labels_all_head.append(
-                #     torch.cat([pred_head_label for pred_head_label in pred_label_b],1)
-                #     .to('cpu').numpy())
-                true_labels_all_head.append(torch.cat(true_labels_b,1).to('cpu').numpy())
-                pred_labels_all_head.append(torch.cat(pred_label_b,1).to('cpu').numpy())
+        pred_labels_all_head, true_labels_all_head, true_labels_each_head, pred_labels_each_head = mtl_validation_test(validation_dataloader, head_count, device, nheads, model)
 
         #-------------------------calculate and storing VALIDATION result for ALL heads----------------------
-        true_labels_all_head = np.concatenate(true_labels_all_head, axis=0)
-        pred_labels_all_head = np.concatenate(pred_labels_all_head, axis=0)
-
         val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy, prf = calculate_scores(pred_labels_all_head, true_labels_all_head)
 
         store_results_to_mlflow("mtl.validation", fold_i, e , val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy)
@@ -211,48 +190,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     #===========================test============================
     model.eval()
 
-    #track variables
-    true_labels_each_head,pred_labels_each_head = [],[]
-    true_labels_all_head,pred_labels_all_head = [],[]
-    # Predict
-    for i, batch in enumerate(test_dataloader):
-        batch = tuple(t.to(device) for t in batch)
-        # Unpack the inputs from our dataloader
-        b_input_ids, b_input_mask, b_labels = batch
-        with torch.no_grad():
-            pred_label_heads = []
-            true_label_heads = []
-            
-            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
-            for i in range(0,nheads):
-                #remove -1 paddings:
-                labels = b_labels[:,i,:]
-                labels = labels[:,0:head_count[i]]
-
-                true_label_heads.append(labels)
-                pred = torch.sigmoid(outputs.logits[i])
-                pred_label_heads.append(pred)
-
-            #store batch labels 
-            pred_label_b = np.array(pred_label_heads)
-            true_labels_b = np.array(true_label_heads)
-
-            #store each head label seperatly
-            true_labels_each_head.append(true_labels_b)
-            pred_labels_each_head.append(pred_label_b)
-
-            #store all head labels together
-            true_labels_all_head.append(
-                torch.cat([true_head_label for true_head_label in true_labels_b],1)
-                .to('cpu').numpy())
-            pred_labels_all_head.append(
-                torch.cat([pred_head_label for pred_head_label in pred_label_b],1)
-                .to('cpu').numpy())
-
-    #-------------------------calculate and storing TEST result for ALL heads----------------------
-    true_labels_all_head = np.concatenate([item for item in true_labels_all_head])
-    pred_labels_all_head = np.concatenate([item for item in pred_labels_all_head])
+    pred_labels_all_head, true_labels_all_head, true_labels_each_head, pred_labels_each_head = mtl_validation_test(test_dataloader, head_count, device, nheads, model)
     
+    #-------------------------calculate and storing TEST result for ALL heads----------------------    
     test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report= calculate_scores_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
     store_results_to_mlflow(f"mtl.test", fold_i, e , test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report)
     
