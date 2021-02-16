@@ -174,8 +174,8 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
                 mlflowLogger.store_metric(f"mtl.validation.Label.{_label}.f1", prf[2][indx], e)  #else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
 
         #-------------------------calculate and storing VALIDATION result for EACH head----------------------
-        true_labels_each_head = np.array(true_labels_each_head)
-        pred_labels_each_head = np.array(pred_labels_each_head)
+        # true_labels_each_head = np.array(true_labels_each_head)
+        # pred_labels_each_head = np.array(pred_labels_each_head)
         for i in range(0,nheads):
             i_head_true_labels = true_labels_each_head[:,i]
             i_head_true_labels = torch.cat([item for item in i_head_true_labels],0).to('cpu').numpy()
@@ -197,8 +197,8 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     store_results_to_mlflow(f"mtl.test", fold_i, e , test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report)
     
 
-    true_labels_each_head = np.array(true_labels_each_head)
-    pred_labels_each_head = np.array(pred_labels_each_head)
+    # true_labels_each_head = np.array(true_labels_each_head)
+    # pred_labels_each_head = np.array(pred_labels_each_head)
 
     #-------------------------calculate and storing TEST result for EACH head----------------------
     for i in range(0,nheads):
