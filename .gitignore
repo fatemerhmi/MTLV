@@ -16,7 +16,7 @@ artifacts/
 setup_cc*
 req1.txt
 req2.txt
-
+model_weights/openI_BERT*
 blg*
 
 # Byte-compiled / optimized / DLL files
