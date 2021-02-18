@@ -34,7 +34,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
         print(f"[  training  ] The training type is: Multi-head classification.")
         if fold_i != None:
             print(f"[training] Fold {fold_i}")
-            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i)
+            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i, training_type_experiment)
         else:
             mtl_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss)
 
@@ -46,7 +46,7 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
 
         if fold_i != None:
             print(f"[training] Fold {fold_i}")
-            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i)
+            test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i, training_type_experiment)
         else:
             singlehead_cls(train_dataloader, val_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer)
     
@@ -88,11 +88,15 @@ def mtl_validation_test(validation_dataloader, head_count, device, nheads, model
 
     return pred_labels_all_head, true_labels_all_head, true_labels_each_head, pred_labels_each_head
 
-def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None):
+def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None, training_type_experiment = None):
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names")) 
     heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index")) #if fold_i == None else ast.literal_eval(mlflowLogger.get_params(f"heads_index.Fold{fold_i}"))
-
+    
+    #-------get mlflow prefix for storing variables
+    prefix_logger = ""
+    if training_type_experiment == 'ttest':
+        prefix_logger = "mtl."
 
     head_index_flatten = [i for head_index in heads_index for i in head_index]
     new_col_names_order = [col_names[index] for index in head_index_flatten]
@@ -153,9 +157,9 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         train_headloss = train_headloss/nb_tr_steps
         index = 0
         for headloss in train_headloss:
-            mlflowLogger.store_metric(f"mtl.training.headloss.{index}", headloss.item(), e) if fold_i == None else mlflowLogger.store_metric(f"mtl.training.Fold{fold_i}.headloss.{index}", headloss.item(), e)
+            mlflowLogger.store_metric(f"{prefix_logger}training.headloss.{index}", headloss.item(), e) if fold_i == None else mlflowLogger.store_metric(f"{prefix_logger}training.Fold{fold_i}.headloss.{index}", headloss.item(), e)
             index +=1
-        mlflowLogger.store_metric("mtl.training.loss", tr_loss/nb_tr_steps, e) if fold_i == None else mlflowLogger.store_metric(f"mtl.training.Fold{fold_i}.loss", tr_loss/nb_tr_steps, e)
+        mlflowLogger.store_metric(f"{prefix_logger}training.loss", tr_loss/nb_tr_steps, e) if fold_i == None else mlflowLogger.store_metric(f"{prefix_logger}training.Fold{fold_i}.loss", tr_loss/nb_tr_steps, e)
         # print("Train loss: {}".format(tr_loss/nb_tr_steps))
 
         #==============================Validation======================================
@@ -165,13 +169,13 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         #-------------------------calculate and storing VALIDATION result for ALL heads----------------------
         val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy, prf = calculate_scores(pred_labels_all_head, true_labels_all_head)
 
-        store_results_to_mlflow("mtl.validation", fold_i, e , val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy)
+        store_results_to_mlflow(f"{prefix_logger}validation", fold_i, e , val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy)
 
         #log percision, recall, f1 for each label
         if fold_i == None:
             for indx, _label in enumerate(new_col_names_order):
                 #index 2 becuz it has percision, recall, f1
-                mlflowLogger.store_metric(f"mtl.validation.Label.{_label}.f1", prf[2][indx], e)  #else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
+                mlflowLogger.store_metric(f"{prefix_logger}validation.Label.{_label}.f1", prf[2][indx], e)  #else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
 
         #-------------------------calculate and storing VALIDATION result for EACH head----------------------
         true_labels_each_head = np.array(true_labels_each_head)
@@ -184,7 +188,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
             i_head_pred_labels = np.concatenate([item for item in i_head_pred_labels],0)
 
             val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy, _ = calculate_scores(i_head_pred_labels, i_head_true_labels)
-            store_results_to_mlflow(f"mtl.validation.head{i}", fold_i, e , val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy)
+            store_results_to_mlflow(f"{prefix_logger}validation.head{i}", fold_i, e , val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy)
 
 
     #===========================test============================
@@ -194,7 +198,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     
     #-------------------------calculate and storing TEST result for ALL heads----------------------    
     test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report= calculate_scores_test(pred_labels_all_head, true_labels_all_head, new_col_names_order)
-    store_results_to_mlflow(f"mtl.test", fold_i, e , test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report)
+    store_results_to_mlflow(f"{prefix_logger}test", fold_i, e , test_f1_score_micro, test_f1_score_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report)
     
     #-------------------------calculate and storing TEST result for EACH head----------------------
 
@@ -208,7 +212,7 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
         i_head_pred_labels = np.concatenate([item for item in i_head_pred_labels],0)
 
         test_head_f1_micro, test_head_f1_macro, test_head_hamming_loss_, test_head_hamming_score_, test_head_subset_accuracy, _ = calculate_scores(i_head_pred_labels, i_head_true_labels)
-        store_results_to_mlflow(f"mtl.test.head{i}", fold_i, e , test_head_f1_micro, test_head_f1_macro, test_head_hamming_loss_, test_head_hamming_score_, test_head_subset_accuracy)
+        store_results_to_mlflow(f"{prefix_logger}test.head{i}", fold_i, e , test_head_f1_micro, test_head_f1_macro, test_head_hamming_loss_, test_head_hamming_score_, test_head_subset_accuracy)
 
     #-------------------------
     if fold_i == None: 
@@ -216,10 +220,15 @@ def mtl_cls(train_dataloader, validation_dataloader, test_dataloader, model, epo
     if fold_i != None: 
         return test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy
 
-def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i = None):
+def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, fold_i = None, training_type_experiment = None):
 
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
     col_count = len(col_names)
+
+    #-------get mlflow prefix for storing variables
+    prefix_logger = ""
+    if training_type_experiment == 'ttest':
+        prefix_logger = "stl."
 
     #-------load model
     if use_cuda:
@@ -252,7 +261,7 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
             tr_loss += loss.item()
             nb_tr_steps += 1
 
-        mlflowLogger.store_metric("stl.training.loss", tr_loss/nb_tr_steps, e)  if fold_i == None else mlflowLogger.store_metric(f"stl.training.Fold{fold_i}.loss", tr_loss/nb_tr_steps, e)
+        mlflowLogger.store_metric(f"{prefix_logger}training.loss", tr_loss/nb_tr_steps, e)  if fold_i == None else mlflowLogger.store_metric(f"{prefix_logger}training.Fold{fold_i}.loss", tr_loss/nb_tr_steps, e)
 
         #===========Validation==========
         model.eval()
@@ -269,7 +278,7 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
                 pred_labels_singlehead.extend(torch.sigmoid(outputs.logits).cpu().detach().numpy().tolist())
 
         val_f1_micro, val_f1_macro, val_hamming_loss_, val_hamming_score_, val_subset_accuracy, prf = calculate_scores(pred_labels_singlehead, true_labels_signlehead)
-        store_results_to_mlflow("stl.validation", fold_i, e , val_f1_micro, val_f1_macro, val_hamming_loss_, val_hamming_score_, val_subset_accuracy)
+        store_results_to_mlflow(f"{prefix_logger}validation", fold_i, e , val_f1_micro, val_f1_macro, val_hamming_loss_, val_hamming_score_, val_subset_accuracy)
 
         #log percision, recall, f1 for each label
         # if fold_i == None:
@@ -296,8 +305,8 @@ def singlehead_cls(train_dataloader, validation_dataloader, test_dataloader, mod
             pred_labels_singlehead.extend(torch.sigmoid(outputs.logits).cpu().detach().numpy().tolist())
     
     test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report = calculate_scores_test(pred_labels_singlehead, true_labels_signlehead, col_names)
-    store_results_to_mlflow("stl.test", fold_i, e , test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy)
-    mlflowLogger.store_artifact(test_clf_report, "stl.test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"stl.test.cls_report.Fold{fold_i}.", "txt")
+    store_results_to_mlflow(f"{prefix_logger}test", fold_i, e , test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy)
+    mlflowLogger.store_artifact(test_clf_report, f"{prefix_logger}test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"{prefix_logger}test.cls_report.Fold{fold_i}.", "txt")
 
     if fold_i !=None: 
         return test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy
