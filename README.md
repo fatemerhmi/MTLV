@@ -1,5 +1,5 @@
-# radiologyreportBESTproject
-This is a project I'm doing for my thesis. 
+# MTLV (Multi-Task Learning Visulizer)
+One of the challenges of multi-task learning is negative transfer as the it is probem dependent. To compare and investigate which how each task/head/model is performing with different set of tasks, we designed MTLV to help you investigate how your design/optimization is going to affect the learnign of a model. 
 
 ## How to clone the repo
 As this repo includes a sub module, the clone part is a bit different: 
