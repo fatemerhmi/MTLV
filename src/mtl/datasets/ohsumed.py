@@ -9,7 +9,7 @@ import ast
 import torch
 from transformers import BertModel
 
-from mtl.datasets.utils import iterative_train_test_split, create_dataLoader, create_new_column
+from mtl.datasets.utils import  create_new_column, save_fold_train_validation, read_fold_train_validattion
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
 from mtl.datasets.utils import iterative_train_test_split, create_dataLoader, preprocess, preprocess_cv
@@ -131,135 +131,31 @@ def _setup_dataset(dataset_name, dataset_args, tokenizer, tokenizer_args, head_t
 
 def _setup_dataset_cv(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold):
 
+    DATA_DIR = dataset_args['root']
     train_df_orig, test_df, labels, num_labels = ohsumed_dataset_preprocess(dataset_args)
-
     fold_i =0
+    test_df.reset_index(drop=True, inplace=True)
+
     stratifier = IterativeStratification(n_splits=fold, order=2)
     for train_indexes, val_indexes in stratifier.split(train_df_orig['text'], np.array(train_df_orig['labels'].to_list())):
         fold_i += 1
         print(f"[dataset] ======================================= Fold {fold_i} =======================================")
+        if not os.path.exists(f'{DATA_DIR}/{dataset_args["data_path"]}/train_fold{fold_i}.csv'):
+            # print("&"*40)
+            val_df = train_df_orig.iloc[val_indexes,:]
+            train_df = train_df_orig.iloc[train_indexes,:]
 
-        val_df = train_df_orig.iloc[val_indexes,:]
-        train_df = train_df_orig.iloc[train_indexes,:]
+            train_df.reset_index(drop=True, inplace=True)
+            val_df.reset_index(drop=True, inplace=True)
 
-        train_df.reset_index(drop=True, inplace=True)
-        test_df.reset_index(drop=True, inplace=True)
-        val_df.reset_index(drop=True, inplace=True)
+            save_fold_train_validation(train_df, val_df, dataset_args, fold_i)
+        else:
+            # print("$"*40)
+            train_df, val_df = read_fold_train_validattion(fold_i, dataset_args)
 
         train_dataloader, validation_dataloader, test_dataloader, num_labels = preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, labels_dict, head_type, head_args, num_labels, model_cfg, batch_size, fold_i)
         yield train_dataloader, validation_dataloader, test_dataloader, num_labels
 
-# def _setup_dataset(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg):
-    
-#     train_df_orig, test_df, labels, num_labels = ohsumed_dataset_preprocess(dataset_args)
-
-#     train_indexes, val_indexes = iterative_train_test_split(train_df['text'], np.array(train_df['labels'].to_list()), 0.15)
-
-#     val_df = train_df.iloc[val_indexes,:]
-#     train_df = train_df.iloc[train_indexes,:]
-
-#     train_df.reset_index(drop=True, inplace=True)
-#     test_df.reset_index(drop=True, inplace=True)
-#     val_df.reset_index(drop=True, inplace=True)
-
-#     print('Train: ', len(train_df))
-#     mlflowLogger.store_param("dataset.train.len", len(train_df))
-#     print('Test: ', len(test_df))
-#     mlflowLogger.store_param("dataset.test.len", len(test_df))
-#     print('Val: ', len(val_df))
-#     mlflowLogger.store_param("dataset.val.len", len(val_df))
-
-#     #-------table for train, test,val counts
-#     # label_counts_total = np.array(df.labels.to_list()).sum(axis=0)
-#     label_counts_train = np.array(train_df.labels.to_list()).sum(axis=0)
-#     label_counts_test = np.array(test_df.labels.to_list()).sum(axis=0)
-#     label_counts_val = np.array(val_df.labels.to_list()).sum(axis=0)
-
-#     pretty=PrettyTable()
-#     label_counts_total = []
-#     pretty.field_names = ['Label', 'total', 'train', 'test','val']
-#     for pathology, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_train, label_counts_test, label_counts_val):
-#         cnt_total = cnt_train + cnt_test + cnt_val
-#         label_counts_total.append(cnt_total)
-#         pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
-#     print(pretty)
-
-#     # pretty=PrettyTable()
-#     # pretty.field_names = ['Label', 'total', 'train', 'test','val']
-#     # for pathology, cnt_total, cnt_train, cnt_test, cnt_val in zip(labels, label_counts_total, label_counts_train, label_counts_test, label_counts_val):
-#     #     pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
-#     # print(pretty)
-
-#     #-------check for multi-head, single or multi-task
-#     if head_type =="multi-task":
-#         #check the type:   
-#         if head_args['type'] == "givenset":
-#             heads_index = head_args["heads_index"]
-
-#         elif head_args['type'] == "KDE":
-#             heads_index = KDE(label_counts_total, head_args['bandwidth'])
-
-#         elif head_args['type'] == "meanshift":
-#              heads_index = meanshift(label_counts_total)
-
-#         elif head_args['type'] == "kmediod-label":
-#             print("[  dataset  ] kmediod-label grouping starts!")
-#             # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
-#             model = configuration.setup_model(model_cfg)(num_labels, "singlehead_cls")
-#             embds = get_all_label_embds(labels, tokenizer, model)
-#             if "elbow" in head_args.keys():
-#                 plot_elbow_method(embds,head_args['elbow'])
-#             heads_index = grouping_kmediod(embds, head_args['clusters'])
-#             del model
-
-#         elif head_args['type'] == "kmediod-labeldesc":
-#             print("[  dataset  ] kmediod-label description grouping starts!")
-#             # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
-#             model = configuration.setup_model(model_cfg)(num_labels, "singlehead_cls")
-#             labels_list = [labels_dict[label] for label in labels]
-#             # list(labels_dict.values()
-#             embds = get_all_label_embds(labels_list, tokenizer, model)
-#             if "elbow" in head_args.keys():
-#                 plot_elbow_method(embds,head_args['elbow'])
-#             heads_index = grouping_kmediod(embds, head_args['clusters'])
-#             del model
-
-#         mlflowLogger.store_param("heads_index", heads_index)
-#         padded_heads = padding_heads(heads_index)
-        
-#         #--group the heads
-#         train_df = group_heads(padded_heads, train_df)
-#         test_df = group_heads(padded_heads, test_df)
-#         val_df = group_heads(padded_heads, val_df)
-
-#         #--prepare labels for dataloader
-#         train_labels = torch.from_numpy(np.array(train_df.head_labels.to_list()))
-#         test_labels = torch.from_numpy(np.array(test_df.head_labels.to_list()))
-#         val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
-
-#     elif head_type =="single-head":
-#         #--prepare labels for dataloader
-#         train_labels = torch.from_numpy(np.array(train_df.labels.to_list()))
-#         test_labels = torch.from_numpy(np.array(test_df.labels.to_list()))
-#         val_labels = torch.from_numpy(np.array(val_df.labels.to_list()))
-#     else:
-#         raise Exception("The head type must be either 'multi-task' or 'single-head'!")
-
-#     #-------tokenize
-#     reports_train = train_df.text.to_list()
-#     reports_test = test_df.text.to_list()
-#     reports_val   = val_df.text.to_list()
-   
-#     train = tokenizer(reports_train, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-#     test = tokenizer(reports_test, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-#     val = tokenizer(reports_val, padding=tokenizer_args['padding'], truncation=tokenizer_args['truncation'], max_length=tokenizer_args['max_length'], return_tensors="pt")
-    
-#     #-------create dataloarders
-#     train_dataloader      = create_dataLoader(train, train_labels, batch_size)
-#     validation_dataloader = create_dataLoader(val, val_labels, batch_size)
-#     test_dataloader       = create_dataLoader(test, test_labels, batch_size)
-
-#     return train_dataloader, validation_dataloader, test_dataloader, num_labels
 
 #============labels================
 labels_C_to_title = {

@@ -5,7 +5,7 @@ import numpy as np
 import os 
 import re
 
-from mtl.datasets.utils import preprocess, preprocess_cv
+from mtl.datasets.utils import preprocess, preprocess_cv, save_fold_train_validation, read_fold_train_validattion
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
 from mtl.datasets.utils import iterative_train_test_split, create_dataLoader
@@ -65,34 +65,6 @@ def news_dataset_preprocess(dataset_args):
         return train_df_orig, test_df, labels, num_labels
     else:
         raise Exception(f"{DATA_DIR}/{dataset_args['data_path']} does not exists!")
-
-def save_fold_train_validation(train_df, val_df, dataset_args, fold_i):
-    DATA_DIR = dataset_args['root']
-
-    train_df['labels'] = train_df.apply(lambda row: list(row["labels"]), axis=1)
-    train_df.to_csv(f'{DATA_DIR}/news/train_fold{fold_i}.csv', index=False)
-    
-    val_df['labels'] = val_df.apply(lambda row: list(row["labels"]), axis=1)
-    val_df.to_csv(f'{DATA_DIR}/news/validation_fold{fold_i}.csv', index=False)
-    
-
-def read_fold_train_validattion(fold_i, dataset_args):
-    DATA_DIR = dataset_args['root']
-
-    #---------load dataframe
-    print("[  dataset  ] reading Fold:{fold_i} train and validation set.")
-    
-    #--------load dataframe
-    train_df = pd.read_csv(f"{DATA_DIR}/news/train_fold{fold_i}.csv")
-    val_df = pd.read_csv(f"{DATA_DIR}/news/validation_fold{fold_i}.csv")
-
-    train_df.replace(np.nan, "", inplace=True)
-    val_df.replace(np.nan, "", inplace=True)
-
-    train_df.loc[:,'labels'] = train_df.labels.apply(ast.literal_eval)
-    val_df.loc[:,'labels'] = val_df.labels.apply(ast.literal_eval)
-
-    return train_df, val_df
 
 
 def _setup_dataset(dataset_name, dataset_args, tokenizer, tokenizer_args, head_type, head_args, batch_size, model_cfg): 
