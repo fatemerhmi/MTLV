@@ -1,12 +1,12 @@
 # MTLV (Multi-Task Learning Visulizer)
 One of the challenges of multi-task learning is negative transfer as the it is probem dependent. To compare and investigate which how each task/head/model is performing with different set of tasks, we designed MTLV to help you investigate how your design/optimization is going to affect the learnign of a model. 
 
-**Table of Content**
-[1. How to clone the repo?]()     
-[2. Set up the environment]()      
-[3. Run baseline experiments]()      
-[4. Run MTL experiments]()       
-[5. MLflow Tracking]()
+**Table of Content**    
+[1. How to clone the repo?](#1-how-to-clone-the-repo)     
+[2. Set up the environment](#2-set-up-the-environment)      
+[3. Run baseline experiments](#3-run-baseline-experiments)      
+[4. Run MTL experiments](#4-run-mtl-experiments)       
+[5. MLflow Tracking](#5-mlflow-tracking)
 
 
 ## 1. How to clone the repo?
