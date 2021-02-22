@@ -1,7 +1,15 @@
 # MTLV (Multi-Task Learning Visulizer)
 One of the challenges of multi-task learning is negative transfer as the it is probem dependent. To compare and investigate which how each task/head/model is performing with different set of tasks, we designed MTLV to help you investigate how your design/optimization is going to affect the learnign of a model. 
 
-## How to clone the repo
+**Table of Content**
+[1. How to clone the repo?]()     
+[2. Set up the environment]()      
+[3. Run baseline experiments]()      
+[4. Run MTL experiments]()       
+[5. MLflow Tracking]()
+
+
+## 1. How to clone the repo?
 As this repo includes a sub module, the clone part is a bit different: 
 
 Learn more about sub modules [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules). 
@@ -21,16 +29,11 @@ This will initialize your local configuration file
   Then: `git submodule update`      
   This will fetch all the data from `mimic-cxr` project and check out the appropriate commit listed in `radiologyreportBESTproject` project  
 
-## Set up the environment
+## 2. Set up the environment
 ./setup.sh
 
-## Run your experiments:
-`python3 src/main.py --help`       
-`python3 src/main.py run --help`       
-`python3 src/main.py run --config src/mtl/config/openI_1layer.yml`      
-`python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
 
-## Run baseline experiments
+## 3. Run baseline experiments
 ```
 $ python3 src/baseline/main.py run --help
 Usage: main.py run [OPTIONS]
@@ -47,7 +50,22 @@ Examples:
 `python3 src/baseline/main.py run -d twentynewsgroup -c randomForest -e bow` 
 `python3 src/main.py run --config src/mtl/config/ohsumed/ohsumed_singlehead1.yml -g 1`
 
-## see the results in mlflow:
+## 4. Run MTL experiments
+```
+$ python3 src/main.py run --help
+Usage: main.py run [OPTIONS]
+
+  Read the config file and run the experiment
+
+Options:
+  -cfg, --config PATH   Configuration file.
+  -g, --gpu-id INTEGER  GPU ID.
+  --help                Show this message and exit.
+```       
+`python3 src/main.py run --config src/mtl/config/openI_1layer.yml`      
+`python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
+
+## 5. MLflow Tracking
 1. Server: `source env/bin/activate`
 2. Server: `mlflow ui -h $(hostname -f) -p 5000`
 3. Local: 
