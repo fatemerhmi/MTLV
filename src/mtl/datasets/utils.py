@@ -263,3 +263,29 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
 
 
 
+def save_fold_train_validation(train_df, val_df, dataset_args, fold_i):
+    DATA_DIR = dataset_args['root']
+
+    train_df['labels'] = train_df.apply(lambda row: list(row["labels"]), axis=1)
+    train_df.to_csv(f"{DATA_DIR}/{dataset_args['data_path']}/train_fold{fold_i}.csv", index=False)
+    
+    val_df['labels'] = val_df.apply(lambda row: list(row["labels"]), axis=1)
+    val_df.to_csv(f"{DATA_DIR}/{dataset_args['data_path']}/validation_fold{fold_i}.csv", index=False)
+
+def read_fold_train_validattion(fold_i, dataset_args):
+    DATA_DIR = dataset_args['root']
+
+    #---------load dataframe
+    print("[  dataset  ] reading Fold:{fold_i} train and validation set.")
+    
+    #--------load dataframe
+    train_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/train_fold{fold_i}.csv")
+    val_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/validation_fold{fold_i}.csv")
+
+    train_df.replace(np.nan, "", inplace=True)
+    val_df.replace(np.nan, "", inplace=True)
+
+    train_df.loc[:,'labels'] = train_df.labels.apply(ast.literal_eval)
+    val_df.loc[:,'labels'] = val_df.labels.apply(ast.literal_eval)
+
+    return train_df, val_df
