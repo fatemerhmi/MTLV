@@ -31,8 +31,3 @@ def reorder(row,groups_index):
 def group_heads(groups,df): # first attempt for each label one head
     df.loc[:,'head_labels'] = df.apply(lambda row: reorder(row['labels'],groups), axis=1)
     return df
-
-def pyMeshSim():
-
-    
-    return sim
