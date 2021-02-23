@@ -1,16 +1,17 @@
 import matplotlib
 import seaborn as sns
 import pandas as pd
-# from sklearn.datasets import load_digits
-
 import torch
 from scipy import spatial
 import numpy as np
 from sklearn_extra.cluster import KMedoids
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
 import mtl.utils.logger as mlflowLogger 
+
+__all__ = ['get_all_label_embds', "plot_elbow_method", 'kmediod_clustering', 'plot_emb_tsne_clusters']
 
 def cos_sim(vec1, vec2):
     return 1 - spatial.distance.cosine(vec1, vec2)
@@ -36,6 +37,12 @@ def get_all_label_embds(labels_title, tokenizer, model):
     return data_transformed
 
 def plot_elbow_method(data, Krange):
+
+    """
+        This function plots the elbow method for 1 to the given krangae (int). 
+        This plots helps user decide the number of clusters which is a hyperparameter of clustering algorithms such as k-mean and k-mediod.
+    """
+
     Sum_of_squared_distances = []
     K = range(1,Krange)
     for k in K:
@@ -50,32 +57,52 @@ def plot_elbow_method(data, Krange):
     mlflowLogger.store_pic(plt, 'Elbow_method', 'png')
     # plt.savefig(f'elbow.png', dpi=100)
 
-def grouping_kmediod(data, n_clusters_, labels_title):
-    # n_clusters_ = 4
+def kmediod_clustering(data, n_clusters_, label_names):
+    """
+    This function cluster the embeddin of labels to the given number of clusters
+    Args:
+        data (list or array)
+            two dimensional list of label embeddings for k-mediod clustering algorithm to cluster.
+        n_clusters_ (int)
+            the number of culsters for k-mediod clustering algorithm to cluster.
+        label_names (list of strings)
+            list of the name of labels (text) in string format.
+            This is used to store the groups in MLflow tracking.
+    """
+
     kmedoids = KMedoids(n_clusters=n_clusters_, random_state=0).fit(data)
     heads_index = [list(np.where(kmedoids.labels_==i)[0]) for i in range(n_clusters_)]
 
-    #------printing the groups
+    #------log the clusters
     groupings = []
     for head_index in heads_index:
         tmp = []
         for i in head_index:
-            tmp.append(labels_title[i])
+            tmp.append(label_names[i])
         groupings.append(tmp)
-    mlflowLogger.store_param("groups_label", groupings)
+    mlflowLogger.store_param("label_clusters", groupings)
     # for group in groupings:
     #     print(group)
     
     return heads_index, kmedoids.labels_
 
-def plot_emb_groups(embds, labels, cluster_label):
+def plot_emb_tsne_clusters(embds, labels, cluster_label):
+    """
+    This function plots t-SNE of the label clusters along with their label name next to the points in plot.
+    Args:
+        embds:
+
+        labels
+
+        cluster_label         
+    """
 
     # digits = load_digits()
 
     # data_X = embds
     # y = cluster_label
 
-    from sklearn.manifold import TSNE
+    
     # tsne = TSNE(n_components=2, random_state=0, n_iter = 3000, perplexity=5)
 
     # tsne_obj= tsne.fit_transform(data_X)

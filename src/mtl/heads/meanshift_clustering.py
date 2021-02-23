@@ -1,9 +1,12 @@
 import numpy as np
 from sklearn.cluster import MeanShift, estimate_bandwidth
 
-__all__ = ['meanshift']
+__all__ = ['meanshift_labelcounts']
 
-def meanshift(x):
+def meanshift_labelcounts(x):
+  """
+  meanshift label counts function recieved the label counts as an input and returns the clustering in a two dimentional list.
+  """
   X = np.reshape(x, (-1, 1))
   ms = MeanShift(bandwidth=None, bin_seeding=True)
   ms.fit(X)
