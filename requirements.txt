@@ -11,3 +11,4 @@ pyunpack
 transformers
 pytorch
 scipy
+hdbscan
