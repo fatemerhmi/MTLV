@@ -91,7 +91,6 @@ def reuters_dataset_preprocess(dataset_args):
 
         #-------shuffle
         train_df_orig = train_df_orig.sample(frac=1).reset_index(drop=True)
-
         mlflowLogger.store_param("dataset.len", len(train_df_orig)+ len(test_df))
 
         #-------save the datafarme

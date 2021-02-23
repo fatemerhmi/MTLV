@@ -13,9 +13,6 @@ from mtl.datasets.utils import  create_new_column, save_fold_train_validation, r
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
 from mtl.datasets.utils import iterative_train_test_split, create_dataLoader, preprocess, preprocess_cv
-from mtl.heads.grouping_KDE import *
-from mtl.heads.grouping_meanshift import *
-from mtl.heads.grouping_kmediod import grouping_kmediod, get_all_label_embds, plot_elbow_method
 
 def ohsumed_dataset_preprocess(dataset_args):
     #------- load or download then set up ohsumed dataset

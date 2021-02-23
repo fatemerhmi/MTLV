@@ -13,14 +13,17 @@ import re
 import sys
 import zipfile
 import gzip
+import pandas as pd
+import ast
 import numpy as np
 from skmultilearn.model_selection import IterativeStratification
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from prettytable import PrettyTable
 
-from mtl.heads.grouping_KDE import *
-from mtl.heads.grouping_meanshift import *
-from mtl.heads.grouping_kmediod import grouping_kmediod, get_all_label_embds, plot_elbow_method, plot_emb_groups
+from mtl.heads.KDE_clustering import *
+from mtl.heads.meanshift_clustering import *
+from mtl.heads.kmediod_clustering import *
+from mtl.heads.HDBSCAN_clustering import hdbscan_clustering
 import mtl.utils.configuration as configuration
 from mtl.heads.utils import padding_heads, group_heads
 import mtl.utils.logger as mlflowLogger 
@@ -79,7 +82,7 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
 
         elif head_args['type'] == "meanshift":
             print("[  dataset  ] meanshift label grouping starts!")
-            heads_index = meanshift(label_counts_train)
+            heads_index = meanshift_labelcounts(label_counts_train)
 
         elif head_args['type'] == "kmediod-label":
             print("[  dataset  ] kmediod-label grouping starts!")
@@ -88,25 +91,26 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
             embds = get_all_label_embds(labels, tokenizer, model)
             if "elbow" in head_args.keys():
                 plot_elbow_method(embds,head_args['elbow'])
-            heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'], labels)
+            heads_index, cluster_label = kmediod_clustering(embds, head_args['clusters'], labels)
             if "plot" in head_args.keys():
                 if head_args['plot'] == True:
-                    plot_emb_groups(embds, labels, cluster_label)
+                    plot_emb_tsne_clusters(embds, labels, cluster_label)
             del model
 
         elif head_args['type'] == "kmediod-labeldesc":
             print("[  dataset  ] kmediod-label description grouping starts!")
             # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
             model = configuration.setup_model(model_cfg)(num_labels, "emb_cls")
-            labels_list = [labels_dict[label] for label in labels]
+            labels_description_list = [labels_dict[label] for label in labels]
             # list(labels_dict.values()
-            embds = get_all_label_embds(labels_list, tokenizer, model)
+            embds = get_all_label_embds(labels_description_list, tokenizer, model)
             if "elbow" in head_args.keys():
                 plot_elbow_method(embds,head_args['elbow'])
-            heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'])
+            n_cluster = head_args['clusters']
+            heads_index, cluster_label = kmediod_clustering(embds, n_cluster, labels)
             if "plot" in head_args.keys():
                 if head_args['plot'] == True:
-                    plot_emb_groups(embds, labels, cluster_label)
+                    plot_emb_tsne_clusters(embds, labels, cluster_label)
             del model
 
         mlflowLogger.store_param("heads_index", heads_index)
@@ -189,40 +193,50 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
             heads_index = head_args["heads_index"]
 
         elif head_args['type'] == "KDE":
-            print("[  dataset  ] KDE label grouping starts!")
+            print("[  dataset  ] KDE label clustering starts!")
             heads_index = KDE(label_counts_train, head_args['bandwidth'])
 
         elif head_args['type'] == "meanshift":
-            print("[  dataset  ] meanshift label grouping starts!")
-            heads_index = meanshift(label_counts_train)
+            print("[  dataset  ] meanshift label clustering starts!")
+            heads_index = meanshift_labelcounts(label_counts_train)
 
         elif head_args['type'] == "kmediod-label":
-            print("[  dataset  ] kmediod-label grouping starts!")
-            # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+            print("[  dataset  ] kmediod-label clustering starts!")
             model = configuration.setup_model(model_cfg)(num_labels, "emb_cls")
             embds = get_all_label_embds(labels, tokenizer, model)
-            if "elbow" in head_args.keys() and (fold_i == 1):
+            if "elbow" in head_args.keys():
                 plot_elbow_method(embds,head_args['elbow'])
-            heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'], labels)
+            heads_index, cluster_label = kmediod_clustering(embds, head_args['clusters'], labels)
             if "plot" in head_args.keys():
-                if (head_args['plot'] == True) and (fold_i == 1):
-                    plot_emb_groups(embds, labels, cluster_label)
+                if head_args['plot'] == True:
+                    plot_emb_tsne_clusters(embds, labels, cluster_label)
             del model
 
         elif head_args['type'] == "kmediod-labeldesc":
-            print("[  dataset  ] kmediod-label description grouping starts!")
-            # model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
+            print("[  dataset  ] kmediod-label description clustering starts!")
             model = configuration.setup_model(model_cfg)(num_labels, "emb_cls")
-            labels_list = [labels_dict[label] for label in labels]
-            # list(labels_dict.values()
-            embds = get_all_label_embds(labels_list, tokenizer, model)
-            if "elbow" in head_args.keys() and (fold_i == 1):
+            labels_description_list = [labels_dict[label] for label in labels]
+            embds = get_all_label_embds(labels_description_list, tokenizer, model)
+            if "elbow" in head_args.keys():
                 plot_elbow_method(embds,head_args['elbow'])
-            heads_index, cluster_label = grouping_kmediod(embds, head_args['clusters'], labels_list)
+            n_cluster = head_args['clusters']
+            heads_index, cluster_label = kmediod_clustering(embds, n_cluster, labels)
             if "plot" in head_args.keys():
-                if (head_args['plot'] == True) and (fold_i == 1):
-                    plot_emb_groups(embds, labels_list, cluster_label)
+                if head_args['plot'] == True:
+                    plot_emb_tsne_clusters(embds, labels, cluster_label)
             del model
+        elif head_args['type'] == "hdbscan":
+            print("[  dataset  ] HDBSCAN label clustering starts!")
+            model = configuration.setup_model(model_cfg)(num_labels, "emb_cls")
+            embds = get_all_label_embds(labels, tokenizer, model)
+            if "elbow" in head_args.keys():
+                Exception("[dataset] No elbow method for hdbscan!")
+            heads_index, cluster_label, n_clusters = hdbscan_clustering(embds, labels)
+            if "plot" in head_args.keys():
+                if head_args['plot'] == True:
+                    plot_emb_tsne_clusters(embds, labels, cluster_label)
+            del model
+
 
         mlflowLogger.store_param(f"heads_index", heads_index)
         padded_heads = padding_heads(heads_index)
@@ -260,8 +274,6 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
     test_dataloader       = create_dataLoader(test, test_labels, batch_size)
 
     return train_dataloader, validation_dataloader, test_dataloader, num_labels
-
-
 
 def save_fold_train_validation(train_df, val_df, dataset_args, fold_i):
     DATA_DIR = dataset_args['root']
