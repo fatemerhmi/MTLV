@@ -12,7 +12,7 @@ from nltk.corpus import reuters
 from itertools import islice
 
 
-from mtl.datasets.utils import iterative_train_test_split, create_dataLoader, create_new_column, preprocess, preprocess_cv
+from mtl.datasets.utils import iterative_train_test_split, create_dataLoader, create_new_column, preprocess, preprocess_cv, save_fold_train_validation, read_fold_train_validattion
 import mtl.utils.logger as mlflowLogger 
 
 def reuters_dataset_preprocess(dataset_args):
@@ -169,4 +169,27 @@ labels_dict = {
     'veg-oil': "Vegetable oil", 
     'soybean': "soybean", 
     'bop': "Balance Of Payments",
+}
+
+labels_dict_long = {
+    'earn': "Earnings and Earnings Forecasts", 
+    'acq': "Mergers Acquisitions", 
+    'money-fx': "Money Foreign Exchange", 
+    'grain': "grain", 
+    'crude': "crude (in a natural or raw state, not yet processed or refined.)", 
+    'trade': "trade", 
+    'interest': "interest", 
+    'wheat': "wheat", 
+    'ship': "ship", 
+    'corn': "corn", 
+    'money-supply': "money supply", 
+    'dlr': "dollar", 
+    'sugar': "sugar", 
+    'oilseed': "oilseed", 
+    'coffee': "coffee", 
+    'gnp': "Gross National Product (total value of a nation's goods and services)", 
+    'gold': "gold", 
+    'veg-oil': "Vegetable oil", 
+    'soybean': "soybean", 
+    'bop': "Balance Of Payments (statement of all transactions made between entities in one country and the rest of the world over a defined period of time, such as a quarter or a year.)",
 }
