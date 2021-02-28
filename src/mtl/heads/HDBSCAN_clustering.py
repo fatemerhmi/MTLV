@@ -4,7 +4,8 @@ import numpy as np
 import mtl.utils.logger as mlflowLogger 
 
 def hdbscan_clustering(data, label_names):
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
+    # https://hdbscan.readthedocs.io/en/latest/basic_hdbscan.html
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=2, cluster_selection_method='leaf')
     clusterer.fit(data)
     n_clusters = clusterer.labels_.max()
     heads_index = [list(np.where(clusterer.labels_==i)[0]) for i in range(n_clusters)]
