@@ -96,68 +96,39 @@ def plot_emb_tsne_clusters(embds, labels, cluster_label):
 
         cluster_label         
     """
+    #-------default tSNE parameters------- 1 
+    # tsne = TSNE(n_components=2, random_state=0)
 
-    # digits = load_digits()
+    #--------tSNE with PCD ------------- 2
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components = 20, random_state = 0)
+    embds = pca.fit_transform(embds)
+    # tsne = TSNE(n_components=2, random_state=0)
 
-    # data_X = embds
-    # y = cluster_label
-
-    
+    #----------TSNE with different parameters------3 
     # tsne = TSNE(n_components=2, random_state=0, n_iter = 3000, perplexity=5)
 
-    # tsne_obj= tsne.fit_transform(data_X)
-
-    # tsne_df = pd.DataFrame({'X':tsne_obj[:,0],
-    #                         'Y':tsne_obj[:,1],
-    #                         'cluster':y})
-
-    # tsne_plot = sns.scatterplot(x="X", y="Y",
-    #           hue="cluster",
-    #           palette=None,
-    #           legend='full',
-    #           data=tsne_df);            
-
-    # LABEL_COLOR_MAP = {0 : 'r',
-    #                1 : 'k',
-    #                ....,
-    #                }
-
-    # label_color = [LABEL_COLOR_MAP[l] for l in labels]
-
-    # from sklearn.decomposition import PCA
-    # pca = PCA(n_components = 20, random_state = 7)
-    # embds = pca.fit_transform(embds)
-    
-    fig, ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
-
-    # tsne = TSNE(n_components=2, random_state=0, n_iter = 3000, perplexity=5)
+    #----------TSNE with different parameters------4
     tsne = TSNE(n_components = 2, perplexity = 10, random_state = 6, 
                 learning_rate = 1000, n_iter = 1500)
     
     np.set_printoptions(suppress=True)
     Y = tsne.fit_transform(embds)
-
     x_coords = Y[:, 0]
     y_coords = Y[:, 1]
     
-    # display scatter plot
+    #------display scatter plot
+    fig, ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
     ax.scatter(x_coords, y_coords, c = cluster_label)
 
     for label, x, y in zip(labels, x_coords, y_coords):
         ax.annotate(label, xy=(x, y), xytext=(0, 0), textcoords='offset points', fontsize=6, ha='center') #clip_on=True
-    plt.xlim(x_coords.min()-(0.2*x_coords.max()), x_coords.max()+(0.2*x_coords.max()))
-    plt.ylim(y_coords.min()-(0.2*x_coords.max()), y_coords.max()+(0.2*x_coords.max()))
-    # plt.show()
-
-
-    # fig = tsne_plot.get_figure()
+    plt.xlim(x_coords.min()-(0.3*x_coords.max()), x_coords.max()+(0.3*x_coords.max()))
+    plt.ylim(y_coords.min()-(0.3*x_coords.max()), y_coords.max()+(0.3*x_coords.max()))
     plt.title('TSNE of embds')
     plt.xlabel('X')
     plt.ylabel('Y')
+
+    #---save fig
     mlflowLogger.store_pic(fig, 'tsne', 'png')
 
-
-    
-    # ax.plot([0,1,2], [10,20,3])
-    # fig.savefig('path/to/save/image/to.png')   # save the figure to file
-    # plt.close(fig) 
