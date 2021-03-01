@@ -71,7 +71,7 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
     print(pretty)
     
     #-------check for multi-head, single or multi-task
-    if head_type =="multi-task":
+    if head_type =="MTL":
         #check the type:   
         if head_args['type'] == "givenset":
             heads_index = head_args["heads_index"]
@@ -126,14 +126,15 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
         test_labels = torch.from_numpy(np.array(test_df.head_labels.to_list()))
         val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
 
-    elif head_type =="single-head":
+    elif head_type =="single-head" or head_type == "STL_cls":
         #--prepare labels for dataloader
         train_labels = torch.from_numpy(np.array(train_df.labels.to_list()))
         test_labels = torch.from_numpy(np.array(test_df.labels.to_list()))
         val_labels = torch.from_numpy(np.array(val_df.labels.to_list()))
 
     else:
-        raise Exception("The head type must be either 'multi-task' or 'single-head'!")
+        raise Exception(f"The head type must be either 'MTL' or 'single-head' or 'STL', you entered {head_type}!")
+
 
     #-------tokenize
     reports_train = train_df.text.to_list()
@@ -187,7 +188,7 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
     print(pretty)
 
     #-------check for multi-head, single or multi-task
-    if head_type =="multi-task":
+    if head_type =="MTL":
         #check the type:   
         if head_args['type'] == "givenset":
             heads_index = head_args["heads_index"]
@@ -225,6 +226,7 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
                 if head_args['plot'] == True:
                     plot_emb_tsne_clusters(embds, labels, cluster_label)
             del model
+
         elif head_args['type'] == "hdbscan":
             print("[  dataset  ] HDBSCAN label clustering starts!")
             model = configuration.setup_model(model_cfg)(num_labels, "emb_cls")
@@ -237,6 +239,18 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
                     plot_emb_tsne_clusters(embds, labels, cluster_label)
             del model
 
+        elif head_args['type'] == "hdbscan-labeldesc":
+            print("[  dataset  ] HDBSCAN label clustering starts!")
+            model = configuration.setup_model(model_cfg)(num_labels, "emb_cls")
+            labels_description_list = [labels_dict[label] for label in labels]
+            embds = get_all_label_embds(labels_description_list, tokenizer, model)
+            if "elbow" in head_args.keys():
+                Exception("[dataset] No elbow method for hdbscan!")
+            heads_index, cluster_label, n_clusters = hdbscan_clustering(embds, labels)
+            if "plot" in head_args.keys():
+                if head_args['plot'] == True:
+                    plot_emb_tsne_clusters(embds, labels, cluster_label)
+            del model
 
         mlflowLogger.store_param(f"heads_index", heads_index)
         padded_heads = padding_heads(heads_index)
@@ -251,13 +265,13 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
         test_labels = torch.from_numpy(np.array(test_df.head_labels.to_list()))
         val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
 
-    elif head_type =="single-head":
+    elif (head_type =="single-head") or (head_type == "STL"):
         #--prepare labels for dataloader
         train_labels = torch.from_numpy(np.array(train_df.labels.to_list()))
         test_labels = torch.from_numpy(np.array(test_df.labels.to_list()))
         val_labels = torch.from_numpy(np.array(val_df.labels.to_list()))
     else:
-        raise Exception("The head type must be either 'multi-task' or 'single-head'!")
+        raise Exception(f"The head type must be either 'MTL' or 'single-head' or 'STL', you entered {head_type}!")
 
     #-------tokenize
     reports_train = train_df.text.to_list()
