@@ -320,37 +320,52 @@ def bert_base_news(num_labels, training_type, device='gpu'):
 def bert_base_uncased(num_labels, training_type, device='gpu'):
     MODEL_PATH = "model_weights/bert-base-uncased"
     if not os.path.exists(MODEL_PATH):
-        if training_type == "singlehead_cls":
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained('bert-base-uncased', num_labels = 1, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
             model =  BertCLS_multilabel_singleHead.from_pretrained('bert-base-uncased', num_labels = num_labels, return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
 
-        elif training_type == "MTL_cls":
+        elif training_type == "GMHL_cls":
             model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-uncased', num_labels2 = [num_labels, device], return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
 
         elif training_type == "emb_cls":
             model = BertModel.from_pretrained('bert-base-uncased', return_dict=True)
-        
-        elif training_type == "STL_cls":
-            model =  BertCLS_binarycls.from_pretrained('bert-base-uncased', num_labels = 1, return_dict=True)
-            model.embedding_size = model.hidden_size_BertCLS
-
     
     else:
-        if training_type == "singlehead_cls":
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained(MODEL_PATH, num_labels = 1, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
             model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
 
-        elif training_type == "MTL_cls":
+        elif training_type == "GMHL_cls":
             model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
 
         elif training_type == "emb_cls":
             model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+
+
+        # if training_type == "singlehead_cls":
+        #     model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+        #     model.embedding_size = model.hidden_size_BertCLS
+
+        # elif training_type == "MTL_cls":
+        #     model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+        #     model.embedding_size = model.hidden_size_BertCLS
+
+        # elif training_type == "emb_cls":
+        #     model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
         
-        elif training_type == "STL_cls":
-            model =  BertCLS_binarycls.from_pretrained(MODEL_PATH, num_labels = 1, return_dict=True)
-            model.embedding_size = model.hidden_size_BertCLS
+        # elif training_type == "STL_cls":
+        #     model =  BertCLS_binarycls.from_pretrained(MODEL_PATH, num_labels = 1, return_dict=True)
+        #     model.embedding_size = model.hidden_size_BertCLS
 
     return model
 
