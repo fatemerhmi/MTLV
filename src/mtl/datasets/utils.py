@@ -71,7 +71,7 @@ def preprocess(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, lab
     print(pretty)
     
     #-------check for multi-head, single or multi-task
-    if head_type =="MTL":
+    if head_type =="MTL" or head_type =="GMTL":
         #check the type:   
         if head_args['type'] == "givenset":
             heads_index = head_args["heads_index"]
@@ -187,8 +187,8 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
         pretty.add_row([pathology, cnt_total, cnt_train, cnt_test, cnt_val])
     print(pretty)
 
-    #-------check for multi-head, single or multi-task
-    if head_type =="MTL":
+    #-------check for head types: STL, MTL, GMTL, GMHL
+    if head_type =="GMTL" or head_type =="GMHL":
         #check the type:   
         if head_args['type'] == "givenset":
             heads_index = head_args["heads_index"]
@@ -265,7 +265,7 @@ def preprocess_cv(train_df, test_df, val_df, tokenizer, tokenizer_args, labels, 
         test_labels = torch.from_numpy(np.array(test_df.head_labels.to_list()))
         val_labels = torch.from_numpy(np.array(val_df.head_labels.to_list()))
 
-    elif (head_type =="single-head") or (head_type == "STL"):
+    elif (head_type =="MTL") or (head_type == "STL"):
         #--prepare labels for dataloader
         train_labels = torch.from_numpy(np.array(train_df.labels.to_list()))
         test_labels = torch.from_numpy(np.array(test_df.labels.to_list()))
