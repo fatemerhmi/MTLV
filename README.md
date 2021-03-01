@@ -77,28 +77,16 @@ training:
   cv : True # False
   fold : 5
 ```
-| Architecture           | Description |
-| ---------------------|-------------- |
-| STL | Single Task Learning (a seperate model per task)  |
-| MTL | Multi Task Learning (a single model for all tasks)  |
-| GMTL | Grouping Multi Task Learning (few models to learn group of tasks) |
-| GMHL | Grouping Multi Head Learning (a single models to learn group of tasks in seperate heads) |
+| Architecture             | Description        |
+| -------------------------|--------------------|
+| STL_cls | Single Task Learning (a seperate model per task)  |
+| MTL_cls | Multi Task Learning (a single model for all tasks)  |
+| GMTL_cls | Grouping Multi Task Learning (few models to learn group of tasks) |
+| GMHL_cls | Grouping Multi Head Learning (a single models to learn group of tasks in seperate heads) |
 
 Provide the Architecture name in the type section of the training config file. 
 
 ### 4.2 Model configuration
-
-
-### 4.3 Head configuration
-
-
-## 5. MLflow Tracking
-1. Server: `source env/bin/activate`
-2. Server: `mlflow ui -h $(hostname -f) -p 5000`
-3. Local: 
-
-
-### Model configuration:
 Download any of the [BioBERT](https://github.com/dmis-lab/biobert) versions bellow and locate them in `\model_wieghts` directory. Then run the script.sh script that is already located in `\model_wieghts` to convert the tensorflow weights to pytorch weights. After running this script, pytorch_model.bin is added to the same directory and the library will automatically use it when the model name is indicated in config files. 
 
 Example:
@@ -108,6 +96,7 @@ model:
     model_name: bert-base-uncased
     freeze: False
 ```
+
 | Model Name           | Description |
 | ---------------------|-------------- |
 | bert-base-uncased | Description       |
@@ -117,13 +106,35 @@ model:
 | BioBERT-Basev1-0-PMC   | based on BERT-base-Cased (same vocabulary) - PMC 270K |
 | BioBERT-Basev1-0-PM-PMC   | based on BERT-base-Cased (same vocabulary) - PubMed 200K + PMC 270K |
 
-for all the BioBERT versions, the tokenizer should be cased version of bert:
+for all the BioBERT versions, the tokenizer should be cased version of bert: (double check this)
 ```
 tokenizer:
   bert:
     name: bert_base_cased
 ```
-### MTL head configuration example options:
+
+### 4.3 Head configuration
+Example: 
+```
+head: 
+  MTL:
+    heads: MultiLabelCLS
+    type: kmediod-labeldesc # givenset meanshift KDE kmediod-label, kmediod-labeldesc 
+    # bandwidth: 20
+    elbow: 8
+    clusters: 4
+    # count: 4
+    # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
+```
+Head options:
+
+| Head             | Description        |
+| -------------------------|--------------------|
+| STL | Single Task Learning (a seperate model per task)  |
+| MTL | Multi Task Learning (a single model for all tasks)  |
+| GMTL | Grouping Multi Task Learning (few models to learn group of tasks) |
+| GMHL | Grouping Multi Head Learning (a single models to learn group of tasks in seperate heads) |
+
 1. Any given set
 ```
 head: 
@@ -163,6 +174,11 @@ head:
     type: kmediod-label
     clusters: 4
 ```
+
+## 5. MLflow Tracking
+1. Server: `source env/bin/activate`
+2. Server: `mlflow ui -h $(hostname -f) -p 5000`
+3. Local: 
 
 
 ### loss configuration example options:
