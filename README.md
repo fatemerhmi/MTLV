@@ -5,7 +5,8 @@ One of the challenges of multi-task learning is negative transfer as the it is p
 [1. How to clone the repo?](#1-how-to-clone-the-repo)     
 [2. Set up the environment](#2-set-up-the-environment)      
 [3. Run baseline experiments](#3-run-baseline-experiments)      
-[4. Run MTL experiments](#4-run-mtl-experiments)       
+[4. Run MTL experiments](#4-run-mtl-experiments)    
+       [4.1 Architecture choice](#4.1-Architecture-choice)    
 [5. MLflow Tracking](#5-mlflow-tracking)
 
 
@@ -64,6 +65,32 @@ Options:
 ```       
 `python3 src/main.py run --config src/mtl/config/openI_1layer.yml`      
 `python3 src/main.py run --config src/mtl/config/openI_singlehead.yml --gpu-id 1`
+
+### 4.1 Architecture configuration
+Example:
+```
+training:
+  type: MTL_cls
+  epoch : 25
+  batch_size : 16
+  use_cuda : True
+  cv : True # False
+  fold : 5
+```
+| Architecture           | Description |
+| ---------------------|-------------- |
+| STL | Single Task Learning (a seperate model per task)  |
+| MTL | Multi Task Learning (a single model for all tasks)  |
+| GMTL | Grouping Multi Task Learning (few models to learn group of tasks) |
+| GMHL | Grouping Multi Head Learning (a single models to learn group of tasks in seperate heads) |
+
+Provide the Architecture name in the type section of the training config file. 
+
+### 4.2 Model configuration
+
+
+### 4.3 Head configuration
+
 
 ## 5. MLflow Tracking
 1. Server: `source env/bin/activate`
