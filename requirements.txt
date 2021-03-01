@@ -12,3 +12,6 @@ transformers
 pytorch
 scipy
 hdbscan
+matplotlib
+pyyaml
+seaborn
