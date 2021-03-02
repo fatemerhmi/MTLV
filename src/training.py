@@ -8,6 +8,7 @@ import mtl.utils.configuration as configuration
 import mtl.utils.logger as mlflowLogger
 from mtl.heads.clsHeads import *
 from mtl.utils.evaluate import *
+from mtl.utils.training import mtl_validation_test
 
 def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cuda, training_type, fold_i = None):
     #-------config
@@ -53,21 +54,31 @@ def train(train_dataloader, val_dataloader, test_dataloader, model, cfg, use_cud
     if fold_i != None:
         return test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_
 
-def GMHL(train_dataloader, validation_dataloader, test_dataloader, model, epoch, use_cuda, cfg_optimizer, cfg_loss, fold_i = None, training_type_experiment = None):
+def GMHL(train_dataloader, validation_dataloader, test_dataloader, cfg, use_cuda, fold_i = None):
     """
     GMHL: Group multi head learning
 
     A function to make a multi-head architecture (an example of multi-task learning).
     To learn all the tasks in same network but with groupings of tasks in seperate heads. 
     """
+    #-------config
+    training_args = cfg['training']
+    training_type = training_args['type']
+    cfg_optimizer = cfg['optimizer']
+    model_cfg = cfg['model']
+    epoch = training_args['epoch']
+    cfg_loss = cfg['loss'] 
+
     #-------get params from mlflow
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names")) 
-    heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index")) #if fold_i == None else ast.literal_eval(mlflowLogger.get_params(f"heads_index.Fold{fold_i}"))
+    heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index")) 
+    # num_labels = [len(labels) for labels in heads_index]
     
-    #-------get mlflow prefix for storing variables
+    #-------get mlflow prefix for storing variables === TODO: figure out ttest
+    training_type_experiment = cfg['training']['type']
     prefix_logger = ""
     if training_type_experiment == 'ttest':
-        prefix_logger = "mtl."
+        prefix_logger = "gmhl."
 
     head_index_flatten = [i for head_index in heads_index for i in head_index]
     new_col_names_order = [col_names[index] for index in head_index_flatten]
@@ -78,9 +89,12 @@ def GMHL(train_dataloader, validation_dataloader, test_dataloader, model, epoch,
     #-------load model
     if use_cuda:
         device = "cuda"
-        model.cuda()
     else:
         device = "cpu"
+    model = configuration.setup_model(cfg['model'])(head_count, training_type, device)
+    if use_cuda:
+        model.cuda()
+
 
     #-------load optimizer
     optimizer = configuration.setup_optimizer(cfg_optimizer, model.parameters())
@@ -206,9 +220,6 @@ def MTL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
     training_type = cfg['training']['type']
 
     #------- model
-    heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
-    num_labels = [len(labels) for labels in heads_index]
-
     model = configuration.setup_model(model_cfg)(num_labels, training_type) 
     if use_cuda:
         device = "cuda"
@@ -267,9 +278,8 @@ def MTL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
                 b_input_mask = b_input_mask.to(device, dtype = torch.long)
                 b_labels = b_labels.to(device, dtype = torch.float)
 
+                #multi-label cls
                 outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
-                # val_loss = outputs.loss.item()
-                # mlflowLogger.store_metric("validation.loss", val_loss, e) if fold_i == None else mlflowLogger.store_metric(f"validation.Fold{fold_i}.loss", val_loss, e)
 
                 true_labels_signlehead.extend(b_labels.cpu().detach().numpy().tolist())
                 pred_labels_singlehead.extend(torch.sigmoid(outputs.logits).cpu().detach().numpy().tolist())
@@ -303,8 +313,7 @@ def MTL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
             pred_labels_singlehead.extend(torch.sigmoid(outputs.logits).cpu().detach().numpy().tolist())
     
     test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report = calculate_scores_test(pred_labels_singlehead, true_labels_signlehead, col_names)
-    store_results_to_mlflow(f"{prefix_logger}test", fold_i, e , test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy)
-    mlflowLogger.store_artifact(test_clf_report, f"{prefix_logger}test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"{prefix_logger}test.cls_report.Fold{fold_i}.", "txt")
+    store_results_to_mlflow(f"{prefix_logger}test", fold_i, e , test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report)
 
     if fold_i !=None: 
         return test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy
@@ -322,7 +331,6 @@ def STL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
     
     configuration.log_training_args(training_args)
 
-
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
     col_count = len(col_names)
 
@@ -334,7 +342,7 @@ def STL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
     #-------Binary classificaiton per label
     true_label_all, preds_label_all = [],[]
     for index_label, single_label_name in enumerate(col_names):
-        true_label, preds_label = BC(train_dataloader, validation_dataloader, test_dataloader, num_labels, index_label, single_label_name, training_type, cfg, use_cuda, fold_i = fold_i, prefix_logger = prefix_logger)
+        true_label, preds_label = BC(train_dataloader, validation_dataloader, test_dataloader, index_label, single_label_name, training_type, cfg, use_cuda, fold_i = fold_i, prefix_logger = prefix_logger)
 
         #storying test target, pred for each label
         true_label_all.append(true_label)
@@ -356,11 +364,11 @@ def STL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
     if fold_i == None: 
         mlflowLogger.finish_mlflowrun()
 
-def GMTL():
+def GMTL(train_dataloader, validation_dataloader, test_dataloader, cfg , use_cuda, fold_i= None):
     """
     GMTL: Grouping Multi-task learning
     A set of models to to perform multi-task learning 
-    Each model learn a set of labels(tasks) that is generated form the clustering
+    Each model learn a set of labels(tasks) that is generated form the clustering (few seperate models)
     """
     #-------training args:
     training_args = cfg['training']
@@ -368,48 +376,150 @@ def GMTL():
     
     configuration.log_training_args(training_args)
 
-
-    col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
+     #-------get params from mlflow
+    col_names = ast.literal_eval(mlflowLogger.get_params("col_names")) 
+    all_heads_indexes = ast.literal_eval(mlflowLogger.get_params("heads_index")) #if fold_i == None else ast.literal_eval(mlflowLogger.get_params(f"heads_index.Fold{fold_i}"))
     col_count = len(col_names)
+
+    head_indexes_flatten = [i for head_index in all_heads_indexes for i in head_index]
+    new_col_names_order = [col_names[index] for index in head_indexes_flatten]
 
     #-------get mlflow prefix for storing variables
     prefix_logger = ""
-    if training_type_experiment == 'ttest':
-        prefix_logger = "stl."
+    if training_type == 'ttest':
+        prefix_logger = "gmtl."
 
-    #-------multi-label cls per group =============todo
+    #-------multi-label cls per group 
     true_label_all, preds_label_all = [],[]
-    for index_label, single_label_name in enumerate(col_names):
-        true_label, preds_label = BC(train_dataloader, validation_dataloader, test_dataloader, num_labels, index_label, single_label_name, training_type, cfg, use_cuda, fold_i = fold_i, prefix_logger = prefix_logger)
+    for index_head, per_head_indexes in enumerate(all_heads_indexes):
+        true_label, preds_label = MLC(train_dataloader, validation_dataloader, test_dataloader, index_head, per_head_indexes, training_type, cfg, use_cuda, fold_i = fold_i, prefix_logger = prefix_logger)
 
         #storying test target, pred for each label
         true_label_all.append(true_label)
         preds_label_all.append(preds_label)
 
-        # if index_label == 2:
-        #     break
-
     #store labels as a multi-label problem
     #concatiante 
     true_label_all = np.concatenate(true_label_all, axis=1)
     preds_label_all = np.concatenate(preds_label_all, axis=1)
-    test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report = calculate_scores_test(preds_label_all, true_label_all, col_names)
+    test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, test_clf_report = calculate_scores_test(preds_label_all, true_label_all, new_col_names_order)
     store_results_to_mlflow(f"{prefix_logger}test", fold_i, 1 , test_f1_micro, test_f1_macro, test_hamming_loss_, test_hamming_score_, test_subset_accuracy, clf_report = test_clf_report)
-    # mlflowLogger.store_artifact(test_clf_report, f"{prefix_logger}test.cls_report", "txt") if fold_i == None else mlflowLogger.store_artifact(test_clf_report, f"{prefix_logger}test.cls_report.Fold{fold_i}.", "txt")
 
     if fold_i !=None: 
         return test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy
     if fold_i == None: 
         mlflowLogger.finish_mlflowrun()
 
-def MLC():
+def MLC(train_dataloader, validation_dataloader, test_dataloader, index_head, per_head_indexes, training_type, cfg, use_cuda,fold_i = None, prefix_logger = None):
     """
     MLC: multi-label classification
     A helper funciton for other functions to call when they are doing a multi-label classification in their settings
     """
-    pass
+   #-------config
+    training_args = cfg['training']
+    cfg_optimizer = cfg['optimizer']
+    model_cfg = cfg['model']
+    epoch = training_args['epoch']
 
-def BC(train_dataloader, validation_dataloader, test_dataloader,num_labels, index_label, single_label_name, training_type, cfg, use_cuda,fold_i = None, prefix_logger = None):
+    #-------load model
+    num_labels = len(per_head_indexes)
+    model = configuration.setup_model(model_cfg)(num_labels, training_type) #fix this for binary cls
+    if use_cuda:
+        device = "cuda"
+        model.cuda()
+    else:
+        device = "cpu"
+
+    #-------load optimizer
+    optimizer = configuration.setup_optimizer(cfg_optimizer, model.parameters())
+
+    #-------FineTune model
+    for e in trange(epoch, desc="Epoch"):
+        #============================Training======================================
+        model.train()
+        tr_loss ,nb_tr_steps = 0, 0
+        for step, batch in enumerate(train_dataloader):
+            # batch = tuple(t.to(device) for t in batch)
+            b_input_ids, b_input_mask, b_labels = batch
+            b_input_ids = b_input_ids.to(device, dtype = torch.long)
+            b_input_mask = b_input_mask.to(device, dtype = torch.long)
+            b_labels = b_labels.to(device, dtype = torch.float)
+
+            #get label of each label for binary classification
+            b_labels_head = b_labels[:,index_head]
+            #remove -1
+            b_labels_head = b_labels_head[:,0:num_labels]
+            #binary cls
+            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels_head)  
+            
+            loss = outputs.loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            # Update tracking variables
+            tr_loss += loss.item()
+            nb_tr_steps += 1
+
+        mlflowLogger.store_metric(f"{prefix_logger}training.headloss{index_head}", tr_loss/nb_tr_steps, e) if fold_i == None else mlflowLogger.store_metric(f"{prefix_logger}training.Fold{fold_i}.headloss{index_head}", tr_loss/nb_tr_steps, e)
+        #==============================Validation======================================
+        model.eval()
+        true_label, preds_label = [],[]
+        with torch.no_grad():
+            for i, batch in enumerate(validation_dataloader):
+                # batch = tuple(t.to(device, dtype = torch.long) for t in batch)
+                b_input_ids, b_input_mask, b_labels = batch
+                b_input_ids = b_input_ids.to(device, dtype = torch.long)
+                b_input_mask = b_input_mask.to(device, dtype = torch.long)
+                b_labels = b_labels.to(device, dtype = torch.float)
+
+                # get label of each label for binary classification
+                b_labels_head = b_labels[:,index_head]
+                #remove -1
+                b_labels_head = b_labels_head[:,0:num_labels]
+
+                outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+                true_label.extend(b_labels_head.cpu().detach().numpy().tolist())
+                preds_label.extend(torch.sigmoid(outputs.logits).cpu().detach().numpy().tolist())
+
+        val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy, prf = calculate_scores(preds_label, true_label)
+        store_results_to_mlflow(f"{prefix_logger}validation.head{index_head}", fold_i, e , val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy)
+
+        #log percision, recall, f1 for each label
+        # if fold_i == None:
+        #     for indx, _label in enumerate(new_col_names_order):
+        #         #index 2 becuz it has percision, recall, f1
+        #         mlflowLogger.store_metric(f"{prefix_logger}validation.Label.{_label}.f1", prf[2][indx], e)  #else mlflowLogger.store_metric(f"validation.Fold{fold_i}.Label.{_label}.f1", prf[2][indx], e)
+
+    #============test=============
+    model.eval()
+    true_labels, pred_labels = [],[]
+    
+    # Predict
+    with torch.no_grad():
+        for i, batch in enumerate(test_dataloader):
+            # batch = tuple(t.to(device) for t in batch)
+            b_input_ids, b_input_mask, b_labels = batch
+            b_input_ids = b_input_ids.to(device, dtype = torch.long)
+            b_input_mask = b_input_mask.to(device, dtype = torch.long)
+            b_labels = b_labels.to(device, dtype = torch.float)
+
+            # get label of each label for binary classification
+            b_labels_head = b_labels[:,index_head]
+            #remove -1
+            b_labels_head = b_labels_head[:,0:num_labels]
+            
+            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)  
+
+            true_labels.extend(b_labels_head.cpu().detach().numpy().tolist())
+            pred_labels.extend(torch.sigmoid(outputs.logits).cpu().detach().numpy().tolist())
+    
+    test_head_f1_micro, test_head_f1_macro, test_head_hamming_loss_, test_head_hamming_score_, test_head_subset_accuracy, _ = calculate_scores_test(true_labels, true_labels)
+    store_results_to_mlflow(f"{prefix_logger}test.head{index_head}", fold_i, e , test_head_f1_micro, test_head_f1_macro, test_head_hamming_loss_, test_head_hamming_score_, test_head_subset_accuracy)
+
+    return true_labels, pred_labels
+
+def BC(train_dataloader, validation_dataloader, test_dataloader, index_label, single_label_name, training_type, cfg, use_cuda,fold_i = None, prefix_logger = None):
     """
     BC: Binary classification
     """
@@ -418,15 +528,14 @@ def BC(train_dataloader, validation_dataloader, test_dataloader,num_labels, inde
     cfg_optimizer = cfg['optimizer']
     model_cfg = cfg['model']
     epoch = training_args['epoch']
+
     #------- model
-    model = configuration.setup_model(model_cfg)(num_labels, training_type) #fix this for binary cls
+    model = configuration.setup_model(model_cfg)(1, training_type) #fix this for binary cls
     if use_cuda:
         device = "cuda"
         model.cuda()
     else:
         device = "cpu"
-
-
 
     #-------load optimizer
     optimizer = configuration.setup_optimizer(cfg_optimizer, model.parameters())
@@ -444,7 +553,7 @@ def BC(train_dataloader, validation_dataloader, test_dataloader,num_labels, inde
             b_labels = b_labels.to(device, dtype = torch.float)
 
             #get label of each label for binary classification
-            b_labels_single = b_labels[:,index_label]
+            b_labels_single = b_labels[:,index_label].view(-1,1)
 
             #binary cls
             outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels_single)  
@@ -484,8 +593,6 @@ def BC(train_dataloader, validation_dataloader, test_dataloader,num_labels, inde
     #============test=============
     model.eval()
     true_label, preds_label = [],[]
-    
-    # Predict
     with torch.no_grad():
         for i, batch in enumerate(test_dataloader):
 
