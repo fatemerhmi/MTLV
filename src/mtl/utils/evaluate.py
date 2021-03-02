@@ -3,7 +3,7 @@ import numpy as np
 from sklearn import metrics
 import mtl.utils.logger as mlflowLogger
 
-__all__ = ["calculate_scores_test", "calculate_scores", "mtl_validation_test", "calculate_scores_binarycls"]
+__all__ = ["calculate_scores_test", "calculate_scores", "calculate_scores_binarycls"]
 
 # def calculate_f1_acc(pred_labels, true_labels, threshold = 0.50):
 #     target = true_labels
@@ -58,21 +58,10 @@ def calculate_scores_binarycls(outputs, targets): #threshold = 0.50
     f1_score_macro = metrics.f1_score(targets, outputs, average='macro')
     f1_score_macro = round(f1_score_macro*100,2)
 
-    # hamming_loss_ = metrics.hamming_loss(targets, outputs)
-    # hamming_loss_ = round(hamming_loss_*100,2)
-
-    # hamming_score_ = hamming_score(np.array(targets), np.array(outputs))
-    # hamming_score_ = round(hamming_score_*100,2)
-
-    # subset_accuracy = metrics.accuracy_score(targets, outputs)
-    # subset_accuracy = round(subset_accuracy*100,2)
-
-    # prf = precision_recall_fscore_support(targets, outputs, average=None)
-
     return f1_score_micro, f1_score_macro
 
 
-def calculate_scores_test(pred_labels, true_labels, test_label_cols):
+def calculate_scores_test(pred_labels, true_labels, test_label_cols = None):
     threshold = calculate_f1_macro_opt(pred_labels, true_labels)
 
     target = true_labels
@@ -152,37 +141,3 @@ def hamming_score(y_true, y_pred, normalize=True, sample_weight=None):
 
 
 
-def mtl_validation_test(validation_dataloader, head_count, device, nheads, model):
-    # Variables to gather full output
-    true_labels_each_head,pred_labels_each_head = [],[]
-    true_labels_all_head,pred_labels_all_head = [],[]
-    
-    for i, batch in enumerate(validation_dataloader):
-        batch = tuple(t.to(device) for t in batch)
-        # Unpack the inputs from our dataloader
-        b_input_ids, b_input_mask, b_labels = batch
-        with torch.no_grad():
-            pred_label_b = []
-            true_labels_b = []
-            outputs = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
-            for i in range(0,nheads):
-                #remove -1 paddings:
-                labels = b_labels[:,i,:]
-                labels = labels[:,0:head_count[i]]
-
-                true_labels_b.append(labels.to('cpu').numpy())
-                pred = torch.sigmoid(outputs.logits[i])
-                pred_label_b.append(pred.to('cpu').numpy())
-
-            #store each head label seperatly
-            true_labels_each_head.append(true_labels_b)
-            pred_labels_each_head.append(pred_label_b)
-
-            #store all head labels together
-            true_labels_all_head.append(np.concatenate(true_labels_b,1))
-            pred_labels_all_head.append(np.concatenate(pred_label_b,1))
-
-    true_labels_all_head = np.concatenate(true_labels_all_head, axis=0)
-    pred_labels_all_head = np.concatenate(pred_labels_all_head, axis=0)
-
-    return pred_labels_all_head, true_labels_all_head, true_labels_each_head, pred_labels_each_head
