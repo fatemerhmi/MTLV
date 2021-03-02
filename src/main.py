@@ -13,7 +13,7 @@ from mtl.heads.utils import padding_heads, group_heads
 from mtl.heads.clsHeads import *
 import mtl.utils.configuration as configuration
 import mtl.utils.logger as mlflowLogger 
-from training import train, STL, MTL
+from training import train, STL, MTL, GMTL, GMHL
 
 def store_mflow_metrics(results, prefix):
     mean = np.mean(results, axis=0) 
@@ -71,9 +71,11 @@ def run(config, gpu_id=0):
         if training_cv == False:
             NameError("Fold is given, but cv is False. Make sure to put cv as True if you want to do cross validation")
         fold = cfg['training']['fold']
-        dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size, training_cv)
+        dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size = configuration.setup_dataset(cfg['dataset'], cfg['tokenizer'], cfg['head'], cfg['model'], batch_size, training_cv)
     else:
         training_cv = False
+
+    model_cfg = cfg['model']
 
     #================================ttest==================================
     if training_type == "ttest":
@@ -147,25 +149,34 @@ def run(config, gpu_id=0):
             
             if training_type == "STL_cls":
                 # as each label will have a seperate model, cannot create the model here, I'll pass the args to the train function
-                # training_args = cfg['training']
                 test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy  = STL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cfg, use_cuda, fold_i, training_type_experiment)
 
             elif training_type == "MTL_cls":
                 test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy  = MTL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cfg, use_cuda, fold_i, training_type_experiment)
 
-            if training_type == "singlehead_cls":
-                model = configuration.setup_model(cfg['model'])(num_labels, training_type)
-                test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy = train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, training_type, fold_i)
+            elif training_type == "GMTL_cls":
+                test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = GMTL(train_dataloader, validation_dataloader, test_dataloader, cfg , use_cuda, fold_i)
+            
+            elif training_type == "GMHL_cls":
+                test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = GMHL(train_dataloader, validation_dataloader, test_dataloader, cfg , use_cuda, fold_i)
+
+            # if training_type == "singlehead_cls":
+            #     model = configuration.setup_model(cfg['model'])(num_labels, training_type)
+            #     test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy = train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, training_type, fold_i)
 
 
             results.append([test_f1_micro, test_f1_macro, test_hamming_score_, test_subset_accuracy])
         
         #-------calculate mean and variance of run details
         results = np.array(results)
-        if training_type == "singlehead_cls":
+        if training_type == "STL_cls":
             store_mflow_metrics(results, "STL")
         elif training_type == "MTL_cls":
             store_mflow_metrics(results, "MTL")
+        elif training_type == "GMTL_cls":
+            store_mflow_metrics(results, "GMTL")
+        elif training_type == "GMHL_cls":
+            store_mflow_metrics(results, "GMHL")
          
         mlflowLogger.finish_mlflowrun()
         return
@@ -178,16 +189,12 @@ def run(config, gpu_id=0):
         # Load model, the pretrained model will include a single linear classification layer on top for classification. 
         if training_type == "singlehead_cls":
             model = configuration.setup_model(cfg['model'])(num_labels, training_type)
+
         elif training_type == "MTL_cls":
             heads_index = ast.literal_eval(mlflowLogger.get_params("heads_index"))
             num_labels = [len(labels) for labels in heads_index]
             model = configuration.setup_model(cfg['model'])(num_labels, training_type, device)
 
-        freeze = list(cfg['model'].values())[0]['freeze']
-        if freeze:
-            # model.freeze_bert_encoder()
-            for param in model.base_model.parameters():
-                param.requires_grad = False
 
         #-------start training
         train(train_dataloader, val_dataloader, test_dataloader, model, cfg , use_cuda, training_type)
