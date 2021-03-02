@@ -16,7 +16,7 @@ def setup_model(model_cfg):
     #-------model name and args:
     model_family = list(model_cfg.keys())[0]
     model_args = list(model_cfg.values())[0]
-    print(f"[  setup model  ] model family name: {model_family}, model arge: {model_args}")
+    print(f"[  setup model  ] model family name: {model_family}, model args: {model_args}")
     available_models = models.__all__
     if model_family in available_models:
         imported_model_module = importlib.import_module( "mtl.models."+ model_family)
@@ -44,7 +44,7 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, t
     #-------dataset name and args:
     dataset_name = list(dataset_cfg.keys())[0]
     dataset_args = list(dataset_cfg.values())[0]
-    print(f"[  setup dataset  ] datset name: {dataset_name}, dataset arge: {dataset_args}")
+    print(f"[  setup dataset  ] datset name: {dataset_name}, dataset args: {dataset_args}")
 
     #-------log dataset name and args to mlflow
     mlflowLogger.store_param("dataset", dataset_name)
@@ -54,7 +54,7 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, t
     #-------tokenizer name and args:
     tokenizer_name = list(tokenizer_cfg.keys())[0]
     tokenizer_args = list(tokenizer_cfg.values())[0]
-    print(f"[  setup tokenizer  ] tokenizer name: {tokenizer_name}, Tokenizer arge: {tokenizer_args}")
+    print(f"[  setup tokenizer  ] tokenizer name: {tokenizer_name}, Tokenizer args: {tokenizer_args}")
 
     #-------log tokenizer name and args to mlflow
     mlflowLogger.store_param("tokenizer", tokenizer_name)
@@ -95,14 +95,14 @@ def setup_dataset(dataset_cfg, tokenizer_cfg, head_cfg, model_cfg, batch_size, t
     
     if ttest == True:
         dataset_obj = getattr(imported_dataset_module, "_setup_dataset_ttest")
-        return dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg
+        return dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size
     elif training_cv == False:
         dataset_obj = getattr(imported_dataset_module, "_setup_dataset")
         train_dataloader, val_dataloader, test_dataloader, num_labels = dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg)
         return train_dataloader, val_dataloader, test_dataloader, num_labels
     elif training_cv == True:
         dataset_obj = getattr(imported_dataset_module, "_setup_dataset_cv")
-        return dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg
+        return dataset_obj, dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size
 
 def setup_optimizer(optimizer_cfg, model_parameters):
     #-------optimizer name and args:
