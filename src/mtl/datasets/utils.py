@@ -302,7 +302,7 @@ def read_fold_train_validattion(fold_i, dataset_args):
     DATA_DIR = dataset_args['root']
 
     #---------load dataframe
-    print("[  dataset  ] reading Fold:{fold_i} train and validation set.")
+    print(f"[  dataset  ] reading Fold:{fold_i} train and validation set.")
     
     #--------load dataframe
     train_df = pd.read_csv(f"{DATA_DIR}/{dataset_args['data_path']}/train_fold{fold_i}.csv")
