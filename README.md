@@ -99,19 +99,14 @@ model:
 
 | Model Name           | Description |
 | ---------------------|-------------- |
-| bert-base-uncased | Description       |
-| bert-base-cased   | Description        |
-| BioBERT-Basev1-1  | based on BERT-base-Cased (same vocabulary) - PubMed 1M |
-| BioBERT-Basev1-0-PM    | based on BERT-base-Cased (same vocabulary) - PubMed 200K |
+| bert-base-uncased | Trained on Wikipedia and book corpus       |
+| bert-base-cased   | Trained on Wikipedia and book corpus        |
+| [BioBERT-Basev1-1](https://huggingface.co/dmis-lab/biobert-v1.1/tree/main)  | based on BERT-base-Cased (same vocabulary) - PubMed 1M // cased|
+| [BlueBERT-Base](https://huggingface.co/bionlp/bluebert_pubmed_uncased_L-12_H-768_A-12) |pretrained on PubMed abstractsand clinical notes (MIMIC-III) // uncased|
+<!-- | BioBERT-Basev1-0-PM    | based on BERT-base-Cased (same vocabulary) - PubMed 200K |
 | BioBERT-Basev1-0-PMC   | based on BERT-base-Cased (same vocabulary) - PMC 270K |
-| BioBERT-Basev1-0-PM-PMC   | based on BERT-base-Cased (same vocabulary) - PubMed 200K + PMC 270K |
+| BioBERT-Basev1-0-PM-PMC   | based on BERT-base-Cased (same vocabulary) - PubMed 200K + PMC 270K | -->
 
-for all the BioBERT versions, the tokenizer should be cased version of bert: (double check this)
-```
-tokenizer:
-  bert:
-    name: bert_base_cased
-```
 
 ### 4.3 Head configuration
 Example: 
