@@ -1,4 +1,4 @@
-from transformers import BertPreTrainedModel, BertModel
+from transformers import BertPreTrainedModel, BertModel, AutoModel
 from torch import nn
 import torch
 from torch.nn import BCEWithLogitsLoss, BCELoss, CrossEntropyLoss
@@ -7,7 +7,7 @@ import os
 
 __all__ = ['bert_base_uncased', 'bert_base_cased', \
 'BioBERT_Basev1_1', 'BioBERT_Basev1_0_PM', 'BioBERT_Basev1_0_PMC', 'BioBERT_Basev1_0_PM_PMC',  \
-"bert_base_news", "bert_base_openI"]
+"bert_base_news", "bert_base_openI", 'BlueBERT_Base', "BioBERT_Basev1_1"]
 
 class BertCLS(BertPreTrainedModel):
     def __init__(self, config):
@@ -351,72 +351,115 @@ def bert_base_uncased(num_labels, training_type, device='gpu'):
         elif training_type == "emb_cls":
             model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
 
-
-        # if training_type == "singlehead_cls":
-        #     model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
-        #     model.embedding_size = model.hidden_size_BertCLS
-
-        # elif training_type == "MTL_cls":
-        #     model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
-        #     model.embedding_size = model.hidden_size_BertCLS
-
-        # elif training_type == "emb_cls":
-        #     model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
-        
-        # elif training_type == "STL_cls":
-        #     model =  BertCLS_binarycls.from_pretrained(MODEL_PATH, num_labels = 1, return_dict=True)
-        #     model.embedding_size = model.hidden_size_BertCLS
-
     return model
 
 def bert_base_cased(num_labels, training_type, device='gpu'):
     MODEL_PATH = "model_weights/bert-base-cased"
+    MODEL_NAME = 'bert-base-cased'
     if not os.path.exists(MODEL_PATH):
-        if training_type == "singlehead_cls":
-            model =  BertCLS_multilabel_singleHead.from_pretrained('bert-base-cased', num_labels = num_labels, return_dict=True)
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained(MODEL_NAME, num_labels = 1, return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
 
-        elif training_type == "MTL_cls":
-            model =  BertCLS_multilabel_MTL.from_pretrained('bert-base-cased', num_labels2 = [num_labels, device], return_dict=True)
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_NAME, num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "GMHL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_NAME, num_labels2 = [num_labels, device], return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
 
         elif training_type == "emb_cls":
-            model = BertModel.from_pretrained('bert-base-cased', return_dict=True)
+            model = BertModel.from_pretrained(MODEL_NAME, return_dict=True)
     
     else:
-        if training_type == "singlehead_cls":
-            # model =  BertCLS.from_pretrained('bert-base-uncased')
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained(MODEL_PATH, num_labels = 1, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
             model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
-            
-        elif training_type == "MTL_cls":
+
+        elif training_type == "GMHL_cls":
             model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
             model.embedding_size = model.hidden_size_BertCLS
 
         elif training_type == "emb_cls":
             model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
 
-    return model
-
-
 def BioBERT_Basev1_1(num_labels, training_type, device='gpu'):
-    MODEL_PATH = "model_weights/biobert_v1.1_pubmed"
-    if not os.path.exists(f"{MODEL_PATH}/pytorch_model.bin"):
-        raise NameError(f'Could not find {MODEL_PATH}/pytorch_model.bin! Download the BioBERT model and store them in model_weights directory, then run the script to convert it to pytorch weights.')
+    MODEL_PATH = "model_weights/biobert-v1.1 "
+    MODEL_NAME = 'dmis-lab/biobert-v1.1'
+    if not os.path.exists(MODEL_PATH):
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained(MODEL_NAME, num_labels = 1, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_NAME, num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "GMHL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_NAME, num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained(MODEL_NAME, return_dict=True)
     
-    if training_type == "singlehead_cls":
-        # model =  BertCLS.from_pretrained('bert-base-uncased')
-        model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
-        model.embedding_size = model.hidden_size_BertCLS
+    else:
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained(MODEL_PATH, num_labels = 1, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
 
-    elif training_type == "MTL_cls":
-        model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
-        model.embedding_size = model.hidden_size_BertCLS
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
 
-    elif training_type == "emb_cls":
-        model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+        elif training_type == "GMHL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
 
-    return model
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+
+def BlueBERT_Base(num_labels, training_type, device='gpu'):
+    MODEL_PATH = "model_weights/bluebert_pubmed_mimic_uncased_L-12_H-768_A-12"
+    MODEL_NAME = "bionlp/bluebert_pubmed_mimic_uncased_L-12_H-768_A-12"
+    if not os.path.exists(MODEL_PATH):
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained(MODEL_NAME, num_labels = 1, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_NAME, num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "GMHL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_NAME, num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained(MODEL_NAME, return_dict=True)
+    
+    else:
+        if training_type == "STL_cls":
+            model =  BertCLS_binarycls.from_pretrained(MODEL_PATH, num_labels = 1, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "MTL_cls" or training_type == "GMTL_cls":
+            model =  BertCLS_multilabel_singleHead.from_pretrained(MODEL_PATH, num_labels = num_labels, return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "GMHL_cls":
+            model =  BertCLS_multilabel_MTL.from_pretrained(MODEL_PATH, num_labels2 = [num_labels, device], return_dict=True)
+            model.embedding_size = model.hidden_size_BertCLS
+
+        elif training_type == "emb_cls":
+            model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+
+
+
 def BioBERT_Basev1_0_PM(num_labels, training_type, device='gpu'):
     MODEL_PATH = "model_weights/biobert_v1.0_pubmed"
     if not os.path.exists(f"{MODEL_PATH}/pytorch_model.bin"):
