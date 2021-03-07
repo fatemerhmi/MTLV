@@ -387,9 +387,10 @@ def bert_base_cased(num_labels, training_type, device='gpu'):
 
         elif training_type == "emb_cls":
             model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+    return model
 
 def BioBERT_Basev1_1(num_labels, training_type, device='gpu'):
-    MODEL_PATH = "model_weights/biobert-v1.1 "
+    MODEL_PATH = "model_weights/biobert-v1.1"
     MODEL_NAME = 'dmis-lab/biobert-v1.1'
     if not os.path.exists(MODEL_PATH):
         if training_type == "STL_cls":
@@ -422,6 +423,7 @@ def BioBERT_Basev1_1(num_labels, training_type, device='gpu'):
 
         elif training_type == "emb_cls":
             model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
+    return model
 
 def BlueBERT_Base(num_labels, training_type, device='gpu'):
     MODEL_PATH = "model_weights/bluebert_pubmed_mimic_uncased_L-12_H-768_A-12"
@@ -457,7 +459,7 @@ def BlueBERT_Base(num_labels, training_type, device='gpu'):
 
         elif training_type == "emb_cls":
             model = BertModel.from_pretrained(MODEL_PATH, return_dict=True)
-
+    return model
 
 
 def BioBERT_Basev1_0_PM(num_labels, training_type, device='gpu'):

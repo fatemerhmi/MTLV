@@ -29,7 +29,7 @@ def bert_large_cased():
 
 
 def BioBERT_Basev1_1():
-    MODEL_PATH = "model_weights/biobert-v1.1 "
+    MODEL_PATH = "model_weights/biobert-v1.1"
     MODEL_NAME = 'dmis-lab/biobert-v1.1'
 
     if not os.path.exists(f"{MODEL_PATH}"):
