@@ -91,11 +91,26 @@ def ohsumed_dataset_preprocess(dataset_args):
         df = df.sample(frac=1).reset_index(drop=True)
         mlflowLogger.store_param("dataset.len", len(df))
 
-        #-------stratified sampling
-        train_indexes, test_indexes = iterative_train_test_split(df['text'], np.array(df['labels'].to_list()), 0.2)
+        #-------sampling 30% of the data
+        _, sample_indexes = iterative_train_test_split(df['text'], np.array(df['labels'].to_list()), 0.3)
 
-        train_df = df.iloc[train_indexes,:]
-        test_df = df.iloc[test_indexes,:]
+        sample_df = df.iloc[sample_indexes,:]
+        sample_df.reset_index(drop=True, inplace=True)
+        
+        # #-------stratified sampling the whole dataset
+        # train_indexes, test_indexes = iterative_train_test_split(df['text'], np.array(df['labels'].to_list()), 0.2)
+
+        # train_df = df.iloc[train_indexes,:]
+        # test_df = df.iloc[test_indexes,:]
+
+        # train_df.reset_index(drop=True, inplace=True)
+        # test_df.reset_index(drop=True, inplace=True)
+
+        #-------stratified sampling the whole dataset
+        train_indexes, test_indexes = iterative_train_test_split(sample_df['text'], np.array(sample_df['labels'].to_list()), 0.2)
+
+        train_df = sample_df.iloc[train_indexes,:]
+        test_df = sample_df.iloc[test_indexes,:]
 
         train_df.reset_index(drop=True, inplace=True)
         test_df.reset_index(drop=True, inplace=True)
