@@ -175,7 +175,6 @@ def GMHL(train_dataloader, validation_dataloader, test_dataloader, cfg, use_cuda
             val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy, _ = calculate_scores(i_head_pred_labels, i_head_true_labels)
             store_results_to_mlflow(f"{prefix_logger}validation.head{i}", fold_i, e , val_head_f1_micro, val_head_f1_macro, val_head_hamming_loss_, val_head_hamming_score_, val_head_subset_accuracy)
 
-
     #===========================test============================
     model.eval()
 
@@ -216,8 +215,13 @@ def MTL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
     model_cfg = cfg['model']
     epoch = training_args['epoch']
 
+    #-------get mlflow prefix for storing variables
+    prefix_logger = ""
+    if training_type_experiment == 'ttest':
+        prefix_logger = "mtl."
+
     #-------training args:
-    training_type = cfg['training']['type']
+    training_type = "MTL_cls"
 
     #------- model
     model = configuration.setup_model(model_cfg)(num_labels, training_type) 
@@ -231,11 +235,6 @@ def MTL(train_dataloader, validation_dataloader, test_dataloader, num_labels, cf
 
     col_names = ast.literal_eval(mlflowLogger.get_params("col_names"))
     col_count = len(col_names)
-
-    #-------get mlflow prefix for storing variables
-    prefix_logger = ""
-    if training_type_experiment == 'ttest':
-        prefix_logger = "mtl."
 
     #-------load optimizer
     optimizer = configuration.setup_optimizer(cfg_optimizer, model.parameters())
@@ -372,7 +371,7 @@ def GMTL(train_dataloader, validation_dataloader, test_dataloader, cfg , use_cud
     """
     #-------training args:
     training_args = cfg['training']
-    training_type = cfg['training']['type']
+    training_type = "GMTL_cls"
     
     configuration.log_training_args(training_args)
 
