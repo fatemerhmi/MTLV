@@ -92,7 +92,7 @@ def ohsumed_dataset_preprocess(dataset_args):
         mlflowLogger.store_param("dataset.len", len(df))
 
         #-------sampling 30% of the data
-        _, sample_indexes = iterative_train_test_split(df['text'], np.array(df['labels'].to_list()), 0.3)
+        _, sample_indexes = iterative_train_test_split(df['text'], np.array(df['labels'].to_list()), 0.2)
 
         sample_df = df.iloc[sample_indexes,:]
         sample_df.reset_index(drop=True, inplace=True)
