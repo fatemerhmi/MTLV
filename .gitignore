@@ -8,9 +8,11 @@ model_weights/bert**
 model_weights/.**
 model_weights/news_BERT/*
 results.xlsx
-
+model_weights/bluebert_pubmed_mimic_uncased_L-12_H-768_A-12
 mlruns/
 mlruns.tar
+mlruns-old.tar
+
 artifacts/
 .vscode/
 setup_cc*
