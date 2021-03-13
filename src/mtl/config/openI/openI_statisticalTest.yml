@@ -1,14 +1,13 @@
 mlflow:
   experiment_name: OpenI_experiments
-  run_name: MTL_bert-base-uncased_kmedoid_c4_wloss_a_e27_ttest
+  run_name: TTEST
   tracking_uri: mlruns
 
 dataset: 
   openI:
     root: ./data
-    data_split: True # True: train, test | False: train, test, val
+    data_split: True
     data_path: OpenI
-    # split_path: openI/cheXpertLabels
     use_data_loader: True
 
 model: 
@@ -18,8 +17,9 @@ model:
     
 training:
   type: ttest #MTL_cls
-  epoch_mtl : 27
-  epoch_s : 17
+  # epoch_mtl : 27
+  # epoch_s : 17
+  epoch: 2
   batch_size : 16
   use_cuda : True
   # cv : True # False
@@ -30,9 +30,9 @@ head:
     heads: MultiLabelCLS
     type: kmediod-label #kmediod-labeldesc givenset meanshift KDE kmediod-label, kmediod-labeldesc 
     # bandwidth: 20
-    elbow: 8
+    # elbow: 8
     clusters: 4
-    plot: true
+    # plot: true
     # count: 4
     # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
 
@@ -48,11 +48,6 @@ optimizer:
     name: AdamW
     lr: 0.00002
 
-loss:
-  type: weighted_lossp_avg #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
-
 # loss:
-#   type: weightedsum # weightedavg weightedsum 
-#   weights: [0.30, 0.30, 0.20, 0.20]
-#   weights: [0.56, 0.15, 0.19, 0.10]
+#   type: weighted_lossp_avg #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
 
