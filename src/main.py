@@ -87,7 +87,7 @@ def run(config, gpu_id=0):
 
         for train_dataloader_gmtl, validation_dataloader_gmtl, test_dataloader_gmtl, num_labels_gmtl, train_dataloader_mtl, val_dataloader_mtl, test_dataloader_mtl, num_labels_mtl in dataset_obj(dataset_name, dataset_args, tokenizer_obj, tokenizer_args, head_type, head_args, batch_size, model_cfg, fold): 
             fold_i += 1
-            print(f"[main] Fold {fold_i}")
+            print(f"[main] ----- TTEST ----------Fold {fold_i}")
             training_type_experiment = cfg['training']['type']
 
             #--------MTL
@@ -96,7 +96,7 @@ def run(config, gpu_id=0):
 
             #-------GMTL
             test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_ = GMTL(train_dataloader_gmtl, validation_dataloader_gmtl, test_dataloader_gmtl, cfg , use_cuda, fold_i)
-            results_GMTL.append([test_f1_score_micro, test_f1_score_macro, test_hamming_score_, test_subset_accuracy])
+            results_GMTL.append([test_f1_micro, test_f1_macro, test_subset_accuracy, test_hamming_score_])
 
 
             # #-------single head--------
@@ -112,9 +112,9 @@ def run(config, gpu_id=0):
 
         #------- ttest, pvalue, ... ----------
         results_MTL = np.array(results_MTL)
-        store_mflow_metrics(results_MTL, "MTL")
+        # store_mflow_metrics(results_MTL, "MTL")
         results_GMTL = np.array(results_GMTL)
-        store_mflow_metrics(results_GMTL, "GMTL")
+        # store_mflow_metrics(results_GMTL, "GMTL")
 
         _, ttest_f1_mi =  stats.ttest_rel(results_MTL[:,0],results_GMTL[:,0])
         _, ttest_f1_ma =  stats.ttest_rel(results_MTL[:,1],results_GMTL[:,1])
