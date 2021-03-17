@@ -1,0 +1,50 @@
+mlflow:
+  experiment_name: OpenI_experiments
+  run_name: GMTL_kmediodLD_e20_c3_BlueBERT
+  tracking_uri: mlruns
+
+dataset: 
+  openI:
+    root: ./data
+    data_split: True # True: train, test | False: train, test, val
+    data_path: OpenI
+    # split_path: openI/cheXpertLabels
+    use_data_loader: True
+
+model: 
+  bert:
+    model_name: BlueBERT_Base #bert-base-uncased #BioBERT-Basev1-0-PM-PMC # 
+    freeze: False
+    
+training:
+  type: GMTL_cls
+  epoch : 20
+  batch_size : 16
+  use_cuda : True
+  cv : True # False
+  fold : 4
+
+head: 
+  GMTL:
+    heads: MultiLabelCLS
+    type: kmediod-labeldesc # givenset meanshift KDE kmediod-label, kmediod-labeldesc 
+    # bandwidth: 20
+    elbow: 8
+    clusters: 3
+    # count: 4
+    # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
+
+tokenizer:
+  bert:
+    name: BlueBERT_Base # bert_base_uncased
+    padding: max_length    # to pad to the longest sequence in the batch
+    truncation: True  # truncate to a maximum length specified by the max_length
+    max_length : 128
+
+optimizer:
+  adam:
+    name: AdamW
+    lr: 0.00002
+
+
+

@@ -1,0 +1,53 @@
+mlflow:
+  experiment_name: OpenI_experiments
+  run_name: TTEST
+  tracking_uri: mlruns
+
+dataset: 
+  openI:
+    root: ./data
+    data_split: True
+    data_path: OpenI
+    use_data_loader: True
+
+model: 
+  bert:
+    model_name: bert-base-uncased #BioBERT-Basev1-0-PM-PMC # 
+    freeze: False
+    
+training:
+  type: ttest #MTL_cls
+  # epoch_mtl : 27
+  # epoch_s : 17
+  epoch: 10
+  batch_size : 16
+  use_cuda : True
+  # cv : True # False
+  # fold : 5
+
+head: 
+  ttest:
+    heads: MultiLabelCLS
+    type: kmediod-label #kmediod-labeldesc givenset meanshift KDE kmediod-label, kmediod-labeldesc 
+    # bandwidth: 20
+    # elbow: 8
+    clusters: 5
+    # plot: true
+    # count: 4
+    # heads_index : [[0,1,2,3,4,5], [6,7,8,9,10], [11,12,13,14,15], [16,17,18,19]]
+
+tokenizer:
+  bert:
+    name:  bert_base_uncased # bert_base_uncased
+    padding: max_length    # to pad to the longest sequence in the batch
+    truncation: True  # truncate to a maximum length specified by the max_length
+    max_length : 128
+
+optimizer:
+  adam:
+    name: AdamW
+    lr: 0.00002
+
+# loss:
+#   type: weighted_lossp_avg #avgloss(aloss) sumloss(sloss) weighted_lossp_avg(wloss_a) weighted_lossp_sum(wloss_s)
+
