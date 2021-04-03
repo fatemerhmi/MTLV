@@ -112,9 +112,9 @@ def run(config, gpu_id=0):
 
         #------- ttest, pvalue, ... ----------
         results_MTL = np.array(results_MTL)
-        # store_mflow_metrics(results_MTL, "MTL")
+        store_mflow_metrics(results_MTL, "MTL")
         results_GMTL = np.array(results_GMTL)
-        # store_mflow_metrics(results_GMTL, "GMTL")
+        store_mflow_metrics(results_GMTL, "GMTL")
 
         _, ttest_f1_mi =  stats.ttest_rel(results_MTL[:,0],results_GMTL[:,0])
         _, ttest_f1_ma =  stats.ttest_rel(results_MTL[:,1],results_GMTL[:,1])
